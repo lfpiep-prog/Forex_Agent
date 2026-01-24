@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # The Trading Agent (Executes trades)
+  agent:
+    build: .
+    restart: always
+    volumes:
+      # Persist the trade journal and logs
+      - ./trade_journal.csv:/app/trade_journal.csv
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # The Macro Data Server (Provides API/Data)
+  macro-server:
+    build: ./macro_server
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/macro_db
+    depends_on:
+      - db
+
+  # Database for Macro Server
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: macro_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

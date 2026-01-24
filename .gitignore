@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Env
+.venv/
+venv/
+env/
+
+# Environment Variables (CRITICAL: Do not commit secrets)
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+
+# Data & Logs
+logs/
+*.log
+macro_data.db
+# trade_journal.csv # Uncomment if you want to exclude your local journal

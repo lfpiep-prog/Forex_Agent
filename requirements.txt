@@ -1,0 +1,26 @@
+# Forex Agent - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core Data Science
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Market Data
+yfinance>=0.2.30
+twelvedata>=1.2.0
+
+# Broker Integration
+trading-ig>=0.0.24
+tenacity>=8.2.0
+munch>=4.0.0
+
+# Sentiment Analysis
+requests>=2.31.0
+textblob>=0.17.0
+boto3>=1.26.0
+
+# Environment & Config
+python-dotenv>=1.0.0
+
+# AI/LLM Integration
+google-generativeai>=0.3.0
