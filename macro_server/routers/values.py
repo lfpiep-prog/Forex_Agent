@@ -1,10 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from ..database import get_db
-from ..services.value_service import MacroValueService
-from ..schemas import models as schemas
-from ..schemas.common import StandardResponse
+from database import get_db
+from services.value_service import MacroValueService
+from schemas import models as schemas
+from schemas.common import StandardResponse
 
 router = APIRouter(prefix="/values", tags=["values"])
 

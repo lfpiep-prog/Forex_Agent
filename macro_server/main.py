@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from . import models
-from .database import engine
-from .routers import indicators, values
+
+# Change to absolute imports for uvicorn
+import models
+from database import engine
+from routers import indicators, values
 # Note: dashboard removed - it requires core.database which is in the main agent container
 
 # Create tables automatically

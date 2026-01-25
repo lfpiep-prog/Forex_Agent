@@ -1,10 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from ..database import get_db
-from ..services.indicator_service import IndicatorService
-from ..schemas import models as schemas
-from ..schemas.common import StandardResponse, Meta
+from database import get_db
+from services.indicator_service import IndicatorService
+from schemas import models as schemas
+from schemas.common import StandardResponse, Meta
 
 router = APIRouter(prefix="/indicators", tags=["indicators"])
 
