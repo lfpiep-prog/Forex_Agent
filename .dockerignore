@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Config & Secrets
+.env
+.env.example
+.env.*
+
+# Python / Environment
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.tmp/
+
+# Large Data & Archives
+ForexAgent_v2.zip
+ForexAgent.tar
+
+# Logs & Databases
+logs/
+*.log
+macro_data.db
+*.db
+trade_journal.csv
+
+# Agent/Brain Artifacts
+.agent/
+Notebook/
+docs/
+reports/
+
+# Testing
+tests/
+test_documents/

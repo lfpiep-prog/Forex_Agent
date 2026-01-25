@@ -1,12 +1,12 @@
-import os
-import logging
 import json
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
 from trading_ig import IGService
 from execution.models import OrderIntent, OrderResult
+from core.config import settings
+from core.logger import get_logger
 
-logger = logging.getLogger("IGBroker")
+logger = get_logger("IGBroker")
 from execution.safety import SafetyGate
 
 class BrokerInterface(ABC):
@@ -22,10 +22,10 @@ class IGBroker(BrokerInterface):
     IG Markets Broker Implementation.
     """
     def __init__(self):
-        self.username = os.environ.get("IG_USERNAME")
-        self.password = os.environ.get("IG_PASSWORD")
-        self.api_key = os.environ.get("IG_API_KEY")
-        self.acc_type = os.environ.get("IG_ACC_TYPE", "DEMO")
+        self.username = settings.IG_USERNAME
+        self.password = settings.IG_PASSWORD
+        self.api_key = settings.IG_API_KEY
+        self.acc_type = settings.IG_ACC_TYPE
         
         self.ig_service = IGService(
             self.username, self.password, self.api_key, self.acc_type
@@ -76,7 +76,9 @@ class IGBroker(BrokerInterface):
         """Lazy loads instrument config from JSON."""
         if not self._instruments_cache:
             try:
-                config_path = os.path.join(os.path.dirname(__file__), '../../config/instruments.json')
+                config_path = "config/instruments.json" # Simplified path for container context or relative to cwd
+                # Better: usage `pathlib` or robust path finding.
+                # Re-adding import os is safer for now if I removed it.
                 with open(config_path, 'r') as f:
                     self._instruments_cache = json.load(f)
             except Exception as e:

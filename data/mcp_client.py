@@ -1,14 +1,10 @@
-import os
 import requests
-import logging
 from textblob import TextBlob
-from dotenv import load_dotenv
 from typing import List, Dict, Any, Optional
+from core.config import settings
+from core.logger import get_logger
 
-# Load .env explicitly
-load_dotenv()
-
-logger = logging.getLogger("MCPClient")
+logger = get_logger("MCPClient")
 
 class SentimentType:
     BULLISH = "BULLISH"
@@ -23,7 +19,7 @@ class MCPDataClient:
 
     def __init__(self, server_name: str = "financial-analysis"):
         self.server_name = server_name
-        self.api_key = os.environ.get("BRAVE_API_KEY")
+        self.api_key = settings.BRAVE_API_KEY
         
         if not self.api_key:
             logger.warning("BRAVE_API_KEY not found! Sentiment analysis will assume NEUTRAL.")

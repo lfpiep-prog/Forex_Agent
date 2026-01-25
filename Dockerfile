@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Keep Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install system dependencies if needed (e.g. for ta-lib or build tools)
-# RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y gcc build-essential python3-dev libffi-dev libssl-dev && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY requirements.txt .

@@ -10,7 +10,7 @@ yfinance>=0.2.30
 twelvedata>=1.2.0
 
 # Broker Integration
-trading-ig>=0.0.24
+trading-ig>=0.0.22
 tenacity>=8.2.0
 munch>=4.0.0
 
@@ -24,3 +24,6 @@ python-dotenv>=1.0.0
 
 # AI/LLM Integration
 google-generativeai>=0.3.0
+
+# Settings
+pydantic-settings

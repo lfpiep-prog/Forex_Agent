@@ -7,10 +7,10 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from execution.run_cycle import run_pipeline
+from core.logger import get_logger
 
-# Setup simple console logging for the scheduler
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - SCHEDULER - %(message)s')
-logger = logging.getLogger("Scheduler")
+# Setup structured logger
+logger = get_logger("Scheduler")
 
 from datetime import datetime, timezone, timedelta
 
