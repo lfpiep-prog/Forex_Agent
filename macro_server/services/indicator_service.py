@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from ..repositories import indicator_repo
-from ..schemas import models as schemas
+from repositories import indicator_repo
+from schemas import models as schemas
 
 class IndicatorService:
     def __init__(self, db: Session):

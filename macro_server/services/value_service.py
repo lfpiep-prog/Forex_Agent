@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from ..repositories import value_repo, indicator_repo
-from ..schemas import models as schemas
+from repositories import value_repo, indicator_repo
+from schemas import models as schemas
 
 class MacroValueService:
     def __init__(self, db: Session):

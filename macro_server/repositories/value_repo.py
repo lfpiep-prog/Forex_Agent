@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from .. import models
-from ..schemas import models as schemas
+import models
+from schemas import models as schemas
 
 def create_value(db: Session, value: schemas.MacroValueCreate):
     db_value = models.MacroValue(

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from .. import models
-from ..schemas import models as schemas
+import models
+from schemas import models as schemas
 
 def get_indicator_by_name(db: Session, name: str):
     return db.query(models.Indicator).filter(models.Indicator.name == name).first()
