@@ -1,16 +1,18 @@
 import time
-import logging
 import sys
 
 # Ensure imports work from current directory
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from execution.run_cycle import run_pipeline
+from execution.engine import TradingEngine
 from core.logger import get_logger
 
 # Setup structured logger
 logger = get_logger("Scheduler")
+
+# Create the Trading Engine (transitional: no DI yet, uses internal legacy logic)
+engine = TradingEngine()
 
 from datetime import datetime, timezone, timedelta
 
@@ -53,7 +55,7 @@ if __name__ == "__main__":
             print(f">>> Executing Pipeline at {datetime.now(timezone.utc).strftime('%H:%M:%S')} UTC")
             
             try:
-                run_pipeline()
+                engine.run_cycle()
                 logger.info("--- HOURLY CHECK COMPLETED ---")
             except Exception as e:
                 logger.error(f"Critical Error during pipeline execution: {e}", exc_info=True)

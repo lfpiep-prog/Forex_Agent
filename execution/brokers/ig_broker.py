@@ -5,19 +5,12 @@ from trading_ig import IGService
 from execution.models import OrderIntent, OrderResult
 from core.config import settings
 from core.logger import get_logger
+from core.interfaces import IBroker
 
 logger = get_logger("IGBroker")
 from execution.safety import SafetyGate
 
-class BrokerInterface(ABC):
-    @abstractmethod
-    def connect(self): pass
-    @abstractmethod
-    def get_balance(self): pass
-    @abstractmethod
-    def execute_order(self, order_intent: OrderIntent) -> OrderResult: pass
-
-class IGBroker(BrokerInterface):
+class IGBroker(IBroker):
     """
     IG Markets Broker Implementation.
     """
