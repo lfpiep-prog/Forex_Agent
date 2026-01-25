@@ -26,17 +26,8 @@ git clone https://github.com/lfpiep-prog/Forex_Agent.git
 cd Forex_Agent
 
 echo "=== 6. Creating .env file template ==="
-cat > .env << 'EOF'
-# IG Markets Credentials
-IG_USERNAME=your_ig_username
-IG_PASSWORD=your_ig_password
-IG_API_KEY=your_ig_api_key
-IG_ACC_TYPE=DEMO
-
-# Optional APIs
-BRAVE_API_KEY=your_brave_key
-TWELVEDATA_API_KEY=your_twelvedata_key
-EOF
+# Note: User has already set up .env with DEMO credentials on the server.
+# To switch to LIVE, they need to edit the .env file and change IG_ACC_TYPE to LIVE.
 
 echo ""
 echo "============================================"
