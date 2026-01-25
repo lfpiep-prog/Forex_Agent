@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from . import models
 from .database import engine
-from .routers import indicators, values, dashboard
+from .routers import indicators, values
+# Note: dashboard removed - it requires core.database which is in the main agent container
 
 # Create tables automatically
 models.Base.metadata.create_all(bind=engine)
@@ -20,7 +21,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Include Routers
 app.include_router(indicators.router)
 app.include_router(values.router)
-app.include_router(dashboard.router)
 
 @app.get("/health")
 def health_check():
