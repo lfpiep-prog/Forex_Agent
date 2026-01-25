@@ -20,6 +20,7 @@ from execution.account import AccountManager
 from execution.filters import TimeFilter
 from data.mcp_client import MCPDataClient
 from execution.state_manager import StateManager
+from execution.notifier import DiscordNotifier
 
 def check_time_constraints(log, plog):
     """Checks if trading is allowed at the current time."""
@@ -211,6 +212,11 @@ def execute_trade(log, latest_signal, lots, plog):
     log.info(f"Step 6 [Exec]: DONE (Status: {result.status})")
     
     plog.update(decision=result.status, reason="Executed" if result.status in ["FILLED", "SUBMITTED"] else f"Exec Failed: {result.error_message}")
+
+    # --- NOTIFICATION ---
+    if result.status in ["FILLED", "SUBMITTED"]:
+        notifier = DiscordNotifier()
+        notifier.send_trade_alert(latest_signal, exec_intent, result)
     
     # Mark processed after attempt (whether successful or not, we intend to not retry this candle blindly)
     # Ideally only on success, but to prevent loops on failure, we mark it.
@@ -253,7 +259,10 @@ def run_pipeline():
             state_manager.mark_candle_processed(config.SYMBOL, config.TIMEFRAME, ts_str)
 
         except Exception as e:
-            log.error(f"Critical Pipeline Error: {e}", exc_info=True)
+            msg = f"Critical Pipeline Error: {e}"
+            log.error(msg, exc_info=True)
+            # Send Critical Alert
+            DiscordNotifier().send_error(msg)
             # PipelineLogger.__exit__ will handle exception logging
             raise e 
 
