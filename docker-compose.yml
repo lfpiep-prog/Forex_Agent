@@ -4,9 +4,10 @@ services:
     build: .
     restart: always
     volumes:
-      # Persist the trade journal and logs
+      # Persist the trade journal, logs, and database
       - ./trade_journal.csv:/app/trade_journal.csv
       - ./logs:/app/logs
+      - ./trades.db:/app/trades.db
     env_file:
       - .env
     deploy:
@@ -22,21 +23,6 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/macro_db
-    depends_on:
-      - db
-
-  # Database for Macro Server
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: macro_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+      # Persist the macro data database
+      - ./macro_data.db:/app/macro_data.db
