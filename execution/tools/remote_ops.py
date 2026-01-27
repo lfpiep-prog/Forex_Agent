@@ -32,7 +32,7 @@ def restart_docker_services():
     """
     logger.info("Restarting Docker services...")
     # Navigate to directory and restart
-    cmd = "cd ~/ForexAgent && docker compose restart"
+    cmd = "cd ~/Forex_Agent && docker compose restart"
     return run_remote_command(cmd)
 
 def get_docker_logs(service_name="forex_agent", lines=50):
@@ -47,7 +47,7 @@ def git_pull():
     Pulls the latest changes from the git repository on the server.
     """
     logger.info("Pulling latest changes from git...")
-    cmd = "cd ~/ForexAgent && git pull"
+    cmd = "cd ~/Forex_Agent && git pull"
     return run_remote_command(cmd)
 
 def get_system_status():

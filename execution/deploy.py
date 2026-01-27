@@ -45,7 +45,7 @@ def deploy_remote():
     
     # 1. Git Pull
     print("   ⬇️  Pulling latest code...")
-    pull_result = run_remote_command("cd ~/ForexAgent && git pull")
+    pull_result = run_remote_command("cd ~/Forex_Agent && git pull")
     if pull_result:
         print(f"      {pull_result}")
     else:
