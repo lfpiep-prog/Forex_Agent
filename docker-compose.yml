@@ -17,7 +17,7 @@ services:
 
   # The Macro Data Server (Provides API/Data)
   macro-server:
-    build: ./macro_server
+    build: ./execution/macro_server
     restart: always
     ports:
       - "8000:8000"
