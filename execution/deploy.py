@@ -55,8 +55,10 @@ def deploy_remote():
     # 2. Restart Containers
     print("   🔄 Restarting Docker containers...")
     restart_result = restart_docker_services()
-    if restart_result:
+    if restart_result is not None:
         print("✅ Server restarted successfully.")
+        if restart_result:
+             print(restart_result)
     else:
         print("❌ Failed to restart server.")
         sys.exit(1)
