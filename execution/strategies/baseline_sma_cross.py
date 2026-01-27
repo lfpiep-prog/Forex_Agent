@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from core.signals import Signal, SignalType
 
 class BaselineSMACross:
     """
@@ -24,7 +25,7 @@ class BaselineSMACross:
         self.slow_period = slow_period
         self.use_rsi_filter = use_rsi_filter
 
-    def calculate(self, df: pd.DataFrame, context: dict = None) -> list[dict]:
+    def calculate(self, df: pd.DataFrame, context: dict = None) -> list[Signal]:
         """
         Calculates signals based on SMA Crossover with optional Sentiment Filter.
         """
@@ -116,7 +117,7 @@ class BaselineSMACross:
         tp_dist = self.TP_MULTIPLIER * atr
         
         return self._create_signal(
-            direction='LONG',
+            signal_type=SignalType.LONG,
             row=row,
             stop_loss=row['close'] - sl_dist,
             take_profit=row['close'] + tp_dist,
@@ -141,7 +142,7 @@ class BaselineSMACross:
         tp_dist = self.TP_MULTIPLIER * atr
         
         return self._create_signal(
-            direction='SHORT',
+            signal_type=SignalType.SHORT,
             row=row,
             stop_loss=row['close'] + sl_dist,
             take_profit=row['close'] - tp_dist,
@@ -149,25 +150,23 @@ class BaselineSMACross:
             rationale=f"SMA({self.fast_period}) < SMA({self.slow_period})"
         )
 
-    def _create_signal(self, direction: str, row: pd.Series, stop_loss: float, take_profit: float, sentiment: str, rationale: str) -> dict:
-        """Constructs the standard signal dictionary."""
+    def _create_signal(self, signal_type: SignalType, row: pd.Series, stop_loss: float, take_profit: float, sentiment: str, rationale: str) -> Signal:
+        """Constructs a typed Signal object."""
         entry_price = row['close']
         rr_ratio = abs(take_profit - entry_price) / abs(entry_price - stop_loss)
         
         full_rationale = (
             f"{rationale} | ATR={row['atr']:.5f} | "
-            f"RSI={row['rsi']:.1f} | Sentiment={sentiment}"
+            f"RSI={row['rsi']:.1f} | Sentiment={sentiment} | RR={rr_ratio:.2f}"
         )
         
-        return {
-            'timestamp': row['timestamp'],
-            'symbol': row['symbol'],
-            'direction': direction,
-            'entry_price': entry_price,
-            'stop_loss': stop_loss,
-            'take_profit': take_profit,
-            'rr_ratio': rr_ratio,
-            'confidence': 1.0,
-            'rationale': full_rationale,
-            'metadata': {'close': entry_price}
-        }
+        return Signal(
+            timestamp=row['timestamp'],
+            symbol=row['symbol'],
+            signal_type=signal_type,
+            entry_price=entry_price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            rationale=full_rationale,
+            metadata={'close': entry_price}
+        )
