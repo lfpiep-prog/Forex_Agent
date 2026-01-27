@@ -76,24 +76,37 @@ class DiscordNotifier:
         status_emoji = "✅" if result.status in ["FILLED", "SUBMITTED"] else "❌"
         color = 5763719 if result.status in ["FILLED", "SUBMITTED"] else 15548997  # Green / Red
 
+        # Helper to get value from dict or object
+        def get_val(obj, key, default):
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
+        direction = get_val(signal, 'direction', 'UNKNOWN')
+        symbol = get_val(signal, 'symbol', 'UNKNOWN')
+        entry = get_val(signal, 'entry_price', 'N/A')
+        sl = get_val(signal, 'stop_loss', 'N/A')
+        tp = get_val(signal, 'take_profit', 'N/A')
+        rationale = get_val(signal, 'rationale', 'No rationale provided')
+
         # Format timestamp with timezone
-        ts = signal.get('timestamp')
+        ts = get_val(signal, 'timestamp', None)
         if hasattr(ts, 'isoformat'):
             ts_str = ts.isoformat()
         else:
             ts_str = datetime.now(timezone.utc).isoformat()
 
         embed = {
-            "title": f"{status_emoji} {'FILLED' if result.status in ['FILLED', 'SUBMITTED'] else 'REJECTED'}: {signal['direction']} {signal['symbol']}",
+            "title": f"{status_emoji} {'FILLED' if result.status in ['FILLED', 'SUBMITTED'] else 'REJECTED'}: {direction} {symbol}",
             "color": color,
             "fields": [
                 {"name": "⏰ Time", "value": ts_str[:19].replace('T', ' '), "inline": True},
                 {"name": "📊 Status", "value": result.status, "inline": True},
                 {"name": "📐 Size", "value": f"{order_intent.quantity} lots", "inline": True},
-                {"name": "💵 Entry", "value": f"{signal.get('entry_price', 'N/A')}", "inline": True},
-                {"name": "🛑 SL", "value": f"{signal.get('stop_loss', 'N/A')}", "inline": True},
-                {"name": "🎯 TP", "value": f"{signal.get('take_profit', 'N/A')}", "inline": True},
-                {"name": "📝 Rationale", "value": signal.get('rationale', 'No rationale provided')[:500], "inline": False},
+                {"name": "💵 Entry", "value": f"{entry}", "inline": True},
+                {"name": "🛑 SL", "value": f"{sl}", "inline": True},
+                {"name": "🎯 TP", "value": f"{tp}", "inline": True},
+                {"name": "📝 Rationale", "value": rationale[:500], "inline": False},
             ],
             "footer": {
                 "text": f"🆔 {result.broker_order_id if result.broker_order_id else 'N/A'} | Source: IG"
