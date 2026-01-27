@@ -5,7 +5,7 @@ echo "=== Forex Agent - Deploying Discord Fix ==="
 echo ""
 
 # Navigate to project directory
-cd /root/ForexAgent || exit 1
+cd /root/Forex_Agent || exit 1
 
 # Pull latest changes
 echo "📥 Pulling latest changes from GitHub..."

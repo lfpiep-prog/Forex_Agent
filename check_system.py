@@ -37,6 +37,29 @@ if sys.platform == "win32":
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Manual .env loading for host execution (where python-dotenv might be missing)
+def load_env_manual():
+    env_path = PROJECT_ROOT / ".env"
+    if env_path.exists():
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
+                        # Remove quotes if present
+                        if value.startswith('"') and value.endswith('"'):
+                            value = value[1:-1]
+                        elif value.startswith("'") and value.endswith("'"):
+                            value = value[1:-1]
+                        
+                        if key not in os.environ:
+                            os.environ[key] = value
+        except Exception as e:
+            print(f"Warning: Failed to load .env manually: {e}")
+
+load_env_manual()
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -527,9 +550,6 @@ class ComprehensiveHealthCheck:
                 True,
                 f"Strategy: {strategy}, Symbol: {symbol}"
             )
-        except ImportError as e:
-            # Gracefully skip if dependencies not installed on host
-            self.log(f"Trading Config: SKIPPED (run inside container for full test)", "SKIP")
         except Exception as e:
             self.add_result("Trading Config", False, f"Load failed: {e}")
 
@@ -538,11 +558,7 @@ class ComprehensiveHealthCheck:
     # ========================================================================
     
     def check_application(self):
-        """Check trading engine and signal generator.
-        
-        Note: These checks require pandas/dotenv which may not be installed on host.
-        If dependencies are missing, checks are skipped gracefully.
-        """
+        """Check trading engine and signal generator."""
         self.section_header("APPLICATION", "🤖")
         
         # Check Trading Engine import
@@ -550,9 +566,6 @@ class ComprehensiveHealthCheck:
             from execution.engine import TradingEngine
             engine = TradingEngine()
             self.add_result("Trading Engine", True, "Initialized")
-        except ImportError as e:
-            # Gracefully skip - dependencies only in Docker container
-            self.log(f"Trading Engine: SKIPPED (dependencies in container only)", "SKIP")
         except Exception as e:
             self.add_result("Trading Engine", False, f"Init failed: {e}")
         
@@ -566,9 +579,6 @@ class ComprehensiveHealthCheck:
                 getattr(config, 'STRATEGY_PARAMS', {})
             )
             self.add_result("Signal Generator", True, "Initialized")
-        except ImportError as e:
-            # Gracefully skip - dependencies only in Docker container
-            self.log(f"Signal Generator: SKIPPED (dependencies in container only)", "SKIP")
         except Exception as e:
             self.add_result("Signal Generator", False, f"Init failed: {e}")
 
