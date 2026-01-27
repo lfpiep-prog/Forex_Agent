@@ -213,21 +213,18 @@ def execute_trade(log, latest_signal, lots, plog):
     
     plog.update(decision=result.status, reason="Executed" if result.status in ["FILLED", "SUBMITTED"] else f"Exec Failed: {result.error_message}")
 
+    # CRITICAL: Mark candle as processed FIRST (before Discord notification)
+    # This prevents duplicate notifications if the process crashes between notification and state save
+    state_manager = StateManager()
+    # Get the candle timestamp (will be fetched again in run_pipeline, but critical for idempotency here)
+    # Pass df as parameter in future refactor
+    pass  # Timestamp handling moved to run_pipeline for proper orchestration
+
     # --- NOTIFICATION ---
+    # Only send notification AFTER state is marked as processed
     if result.status in ["FILLED", "SUBMITTED"]:
         notifier = DiscordNotifier()
         notifier.send_trade_alert(latest_signal, exec_intent, result)
-    
-    # Mark processed after attempt (whether successful or not, we intend to not retry this candle blindly)
-    # Ideally only on success, but to prevent loops on failure, we mark it.
-    # User can delete state.json entry if they want to force retry.
-    state_manager = StateManager()
-    # Need to get the candle timestamp again... strictly speaking we should pass it down.
-    # Instead, we rely on the fact that analyze_market would have returned None if processed.
-    # Wait, analyze_market ONLY marks processed if NO SIGNAL. 
-    # If there IS a signal, it returns it. We execute. THEN we must mark processed.
-    # We need the timestamp here.
-    pass # Managed in run_pipeline now
 
 def run_pipeline():
     log = setup_logger()
@@ -250,13 +247,15 @@ def run_pipeline():
             lots = assess_risk(log, latest_signal, plog)
             if lots is False: return
 
-            execute_trade(log, latest_signal, lots, plog)
-            
-            # Mark processed for the Signal Case
+            # CRITICAL: Mark candle as processed BEFORE execution
+            # This prevents duplicate trades if the process crashes during execution or notification
             state_manager = StateManager()
             last_candle_ts = df.iloc[-1]['timestamp']
             ts_str = last_candle_ts.isoformat() if hasattr(last_candle_ts, 'isoformat') else str(last_candle_ts)
             state_manager.mark_candle_processed(config.SYMBOL, config.TIMEFRAME, ts_str)
+            log.info(f"Candle {ts_str} marked as processed (pre-execution for idempotency)")
+
+            execute_trade(log, latest_signal, lots, plog)
 
         except Exception as e:
             msg = f"Critical Pipeline Error: {e}"
