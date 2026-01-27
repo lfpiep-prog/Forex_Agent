@@ -27,8 +27,8 @@ logger = logging.getLogger("ForexPlatform")
 def check_database_status() -> dict:
     """Check database connectivity and record count."""
     try:
-        from core.database import engine
-        from core.models import TradeResult
+        from execution.core.database import engine
+        from execution.core.models import TradeResult
         
         with Session(bind=engine) as db:
             count = db.query(TradeResult).count()
@@ -80,8 +80,8 @@ def check_data_feed_status() -> dict:
 def get_last_candle_time() -> str:
     """Get timestamp of last processed candle from logs or DB."""
     try:
-        from core.database import engine
-        from core.models import TradeResult
+        from execution.core.database import engine
+        from execution.core.models import TradeResult
         
         with Session(bind=engine) as db:
             latest = db.query(TradeResult).order_by(TradeResult.timestamp.desc()).first()

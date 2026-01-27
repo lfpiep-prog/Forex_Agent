@@ -8,8 +8,8 @@ import numpy as np
 # Add execution path to find modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from market_data import fetch_prices, normalize
-from generate_signals import SignalGenerator
+from execution.market_data import fetch_prices, normalize
+from execution.generate_signals import SignalGenerator
 
 def run_single_backtest(df, strategy_config):
     """

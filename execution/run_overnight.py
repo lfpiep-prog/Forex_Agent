@@ -5,7 +5,7 @@ import sys
 import os
 
 # Ensure imports work from current directory
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from execution.run_cycle import run_pipeline
 

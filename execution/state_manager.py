@@ -3,7 +3,7 @@ import os
 import logging
 from datetime import datetime
 
-STATE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "state.json")
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "state.json")
 logger = logging.getLogger("StateManager")
 
 class StateManager:

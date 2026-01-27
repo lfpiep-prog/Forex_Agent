@@ -17,8 +17,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from sqlalchemy.orm import Session
-from core.database import engine
-from core.models import TradeResult
+from execution.core.database import engine
+from execution.core.models import TradeResult
 from execution.notifier import DiscordNotifier
 from execution.account import AccountManager
 

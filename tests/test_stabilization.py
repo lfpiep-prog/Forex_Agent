@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from execution.state_manager import StateManager
 from execution.run_cycle import fetch_and_prepare_data
-from main_loop import get_seconds_until_next_hour
+from execution.main_loop import get_seconds_until_next_hour
 from execution.config import config
 
 class TestStabilization(unittest.TestCase):
@@ -54,7 +54,7 @@ class TestStabilization(unittest.TestCase):
         self.assertLessEqual(seconds, 3600)
         
         # Border case check (mocking now)
-        with patch('main_loop.datetime') as mock_dt:
+        with patch('execution.main_loop.datetime') as mock_dt:
             # Set time to 10:59:59 UTC
             mock_now = datetime(2023, 1, 1, 10, 59, 59, tzinfo=timezone.utc)
             mock_dt.now.return_value = mock_now

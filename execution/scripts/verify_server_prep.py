@@ -2,16 +2,16 @@ import sys
 import os
 
 # Ensure current directory is in path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from core.logger import get_logger
+from execution.core.logger import get_logger
 
 logger = get_logger("ConfigCheck")
 
 def check_config():
     logger.info("Verifying Configuration...")
     try:
-        from core.config import settings
+        from execution.core.config import settings
         logger.info("✅ Config imported successfully.")
         
         # Check critical fields - masked

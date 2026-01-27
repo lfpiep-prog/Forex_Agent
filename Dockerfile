@@ -26,4 +26,4 @@ RUN touch /app/trade_journal.csv && chown appuser:appuser /app/trade_journal.csv
 USER appuser
 
 # Entrypoint
-CMD ["python", "main_loop.py"]
+CMD ["python", "execution/main_loop.py"]

@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Union
 
 # Constants
 RISK_PERCENT = 0.02
@@ -9,13 +9,42 @@ MIN_LOT_SIZE = 0.01
 PIP_VALUE_JPY = 6.5   # $ per lot per pip for JPY pairs (fallback)
 PIP_VALUE_USD = 10.0  # $ per lot per pip for USD quote pairs
 
-def risk_eval(signal: Dict[str, Any], account_snapshot: Dict[str, float]) -> Tuple[bool, str, float]:
+def _normalize_signal(signal: Any) -> Dict[str, Any]:
+    """Helper to convert Signal object to dictionary safely."""
+    if isinstance(signal, dict):
+        return signal
+    
+    # Try pydantic v2
+    if hasattr(signal, "model_dump"):
+        d = signal.model_dump()
+    # Try pydantic v1
+    elif hasattr(signal, "dict"):
+        d = signal.dict()
+    # Try __dict__ fallback
+    elif hasattr(signal, "__dict__"):
+        d = signal.__dict__.copy()
+    else:
+        return {} # Invalid
+        
+    # Ensure direction is present (Signal property)
+    if "direction" not in d:
+        if hasattr(signal, "direction"):
+             d["direction"] = signal.direction
+        elif "signal_type" in d:
+             d["direction"] = d["signal_type"]
+             
+    return d
+
+def risk_eval(signal: Union[Dict[str, Any], Any], account_snapshot: Dict[str, float]) -> Tuple[bool, str, float]:
     """
     Evaluates risk and calculates a recommended position size.
     
     Returns:
         (is_safe, reason, recommended_size_lots)
     """
+    # Normalize signal input to dict
+    signal = _normalize_signal(signal)
+
     # 0. Basic Validation
     is_valid, validation_msg = _validate_signal(signal, account_snapshot)
     if not is_valid:

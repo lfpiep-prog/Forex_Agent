@@ -3,8 +3,8 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from core.database import get_db
-from core.models import TradeResult
+from execution.core.database import get_db
+from execution.core.models import TradeResult
 
 router = APIRouter(
     prefix="/dashboard",

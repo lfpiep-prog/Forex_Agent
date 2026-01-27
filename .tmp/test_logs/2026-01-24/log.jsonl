@@ -1,1 +1,0 @@
-{"timestamp": "2026-01-24T08:31:36.336896Z", "level": "INFO", "logger": "test_bot", "message": "Test message", "module": "test_logger_refactor", "func": "test_setup_logger", "line": 32}

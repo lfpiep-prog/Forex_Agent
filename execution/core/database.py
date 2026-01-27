@@ -25,5 +25,5 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from core.models import TradeResult  # noqa: F401
+    from execution.core.models import TradeResult  # noqa: F401
     Base.metadata.create_all(bind=engine)

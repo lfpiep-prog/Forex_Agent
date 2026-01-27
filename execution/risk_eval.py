@@ -1,7 +1,7 @@
 from typing import Dict, Optional, Union
 from dataclasses import dataclass, asdict
 from execution.risk_limits import RiskConfig, check_daily_limits, check_exposure_limits
-from core.signals import Signal, SignalType
+from execution.core.signals import Signal, SignalType
 
 @dataclass
 class OrderIntent:

@@ -11,9 +11,9 @@ from execution.execute_order import ExecutionRouter, OrderIntent
 from execution.verify_full_pipeline import generate_dummy_data  # Reuse for now
 from data.mcp_client import MCPDataClient
 from data.yfinance_provider import YFinanceDataProvider
-from core.signals import Signal, SignalType
-from core.database import SessionLocal, init_db
-from core.models import TradeResult
+from execution.core.signals import Signal, SignalType
+from execution.core.database import SessionLocal, init_db
+from execution.core.models import TradeResult
 import uuid
 
 logger = logging.getLogger("ForexPlatform")

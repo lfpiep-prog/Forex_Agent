@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, DateTime, Enum as SQLEnum
-from core.database import Base
-from core.signals import SignalType
+from execution.core.database import Base
+from execution.core.signals import SignalType
 
 
 class TradeResult(Base):

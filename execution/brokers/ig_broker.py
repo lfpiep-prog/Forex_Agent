@@ -1,11 +1,12 @@
 import json
+import os
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
 from trading_ig import IGService
 from execution.models import OrderIntent, OrderResult
-from core.config import settings
-from core.logger import get_logger
-from core.interfaces import IBroker
+from execution.core.config import settings
+from execution.core.logger import get_logger
+from execution.core.interfaces import IBroker
 
 logger = get_logger("IGBroker")
 from execution.safety import SafetyGate
@@ -69,13 +70,18 @@ class IGBroker(IBroker):
         """Lazy loads instrument config from JSON."""
         if not self._instruments_cache:
             try:
-                config_path = "config/instruments.json" # Simplified path for container context or relative to cwd
-                # Better: usage `pathlib` or robust path finding.
-                # Re-adding import os is safer for now if I removed it.
+                # Robust path finding
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # execution directory
+                config_path = os.path.join(base_dir, "config", "instruments.json")
+                
+                if not os.path.exists(config_path):
+                     # Fallback if structure is different
+                     config_path = "config/instruments.json"
+
                 with open(config_path, 'r') as f:
                     self._instruments_cache = json.load(f)
             except Exception as e:
-                logger.error(f"Could not load instruments.json: {e}")
+                logger.error(f"Could not load instruments.json from {config_path}: {e}")
                 return None
         
         return self._instruments_cache.get(symbol)

@@ -3,10 +3,10 @@ import sys
 
 # Ensure imports work from current directory
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from execution.engine import TradingEngine
-from core.logger import get_logger
+from execution.core.logger import get_logger
 
 # Setup structured logger
 logger = get_logger("Scheduler")
