@@ -1,5 +1,6 @@
 
 import logging
+import os
 import time
 from execution.brokers.mock_broker import MockBroker
 from execution.brokers.ig_broker import IGBroker
@@ -7,9 +8,12 @@ from execution.strategies.baseline_sma_cross import BaselineSMACross
 from execution.risk_eval import evaluate_risk
 from execution.risk_limits import RiskConfig
 from execution.execute_order import ExecutionRouter, OrderIntent
-from execution.verify_full_pipeline import generate_dummy_data # Reuse for now
+from execution.verify_full_pipeline import generate_dummy_data  # Reuse for now
 from data.mcp_client import MCPDataClient
 from data.yfinance_provider import YFinanceDataProvider
+from core.signals import Signal, SignalType
+from core.database import SessionLocal, init_db
+from core.models import TradeResult
 import uuid
 
 logger = logging.getLogger("ForexPlatform")
@@ -39,11 +43,17 @@ class TradingEngine:
             
         # Initialize Components
         self.router = ExecutionRouter(self.broker)
-        # Load Risk Config form file later
+        # Load Risk Config from file later
         self.risk_config = RiskConfig(
             max_daily_loss_pct=2.0, max_trades_per_day=5,
             risk_per_trade_pct=1.0, max_open_lots=5.0
         )
+        
+        # Initialize Database
+        self.db_enabled = os.getenv("DATABASE_URL") is not None
+        if self.db_enabled:
+            init_db()
+            logger.info("Database initialized for trade persistence.")
         
     def run_cycle(self):
         """Runs a single logic cycle: Data -> Signal -> Risk -> Execution"""
@@ -97,12 +107,43 @@ class TradingEngine:
             idempotency_key=str(uuid.uuid4()),
             symbol=risk_intent.symbol,
             direction=risk_intent.direction,
-            quantity=int(risk_intent.size * 100000), # Units
+            quantity=int(risk_intent.size * 100000),  # Units
             order_type="MARKET"
         )
         
         result = self.router.execute_order(order_intent)
         logger.info(f"Execution Result: {result}")
+        
+        # 5. Persist to Database
+        self._persist_trade(latest_signal, order_intent, result)
+    
+    def _persist_trade(self, signal: Signal, order_intent, result: dict):
+        """Persist trade result to database if enabled."""
+        if not self.db_enabled:
+            return
+        
+        try:
+            db = SessionLocal()
+            trade = TradeResult(
+                timestamp=signal.timestamp,
+                symbol=signal.symbol,
+                direction=signal.direction,
+                entry_price=signal.entry_price,
+                quantity=order_intent.quantity,
+                stop_loss=signal.stop_loss,
+                take_profit=signal.take_profit,
+                status="OPEN",
+                broker_order_id=result.get("order_id") if result else None,
+                rationale=signal.rationale[:500] if signal.rationale else None
+            )
+            db.add(trade)
+            db.commit()
+            logger.info(f"Trade persisted to DB: {trade}")
+        except Exception as e:
+            logger.error(f"Failed to persist trade: {e}")
+        finally:
+            db.close()
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

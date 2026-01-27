@@ -1,6 +1,7 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from dataclasses import dataclass, asdict
 from execution.risk_limits import RiskConfig, check_daily_limits, check_exposure_limits
+from core.signals import Signal, SignalType
 
 @dataclass
 class OrderIntent:
@@ -39,12 +40,21 @@ def calculate_position_size(equity: float, risk_pct: float, sl_pips: float, pip_
     # Round to 2 decimals (mini lots) - Broker specific
     return round(size, 2)
 
-def evaluate_risk(signal: Dict, account_snapshot: Dict, config: RiskConfig) -> OrderIntent:
+def evaluate_risk(signal: Union[Signal, Dict], account_snapshot: Dict, config: RiskConfig) -> OrderIntent:
     """
     Main entry point to convert a Signal into an OrderIntent.
+    Accepts both typed Signal objects and legacy dictionaries.
     """
-    symbol = signal.get("symbol", "UNKNOWN")
-    direction = signal.get("direction", "BUY")
+    # Handle typed Signal objects
+    if isinstance(signal, Signal):
+        symbol = signal.symbol
+        direction = signal.direction  # Uses property for backward compat
+        current_price = signal.metadata.get("close") if signal.metadata else signal.entry_price
+    else:
+        # Legacy dict support
+        symbol = signal.get("symbol", "UNKNOWN")
+        direction = signal.get("direction", "BUY")
+        current_price = signal.get("metadata", {}).get("close")
     
     # 1. Global Kill Switch / Daily Limits
     limit_check = check_daily_limits(account_snapshot, config)
@@ -56,25 +66,7 @@ def evaluate_risk(signal: Dict, account_snapshot: Dict, config: RiskConfig) -> O
         )
 
     # 2. Determine SL/TP
-    # If strategy provides SL/TP, use them? Or override?
-    # For MVP, let's use config defaults if not in signal (Signal might ideally have them)
-    # But current Signal contract doesn't explicitly guarantee SL/TP prices.
-    # Let's assume we use fixed pips from config for MVP.
-    
-    # Approximate current price needed to calc SL/TP levels.
-    # Signal MIGHT have 'price'. If not, we can't set SL/TP prices without market data.
-    # MVP HACK: If signal doesn't have price, we assume it's a MARKET order intent 
-    # and we specify SL/TP in PIPS relative to fill price later? 
-    # OR we need current price here.
-    # Let's check signal for 'close' or 'price'.
-    
-    current_price = signal.get("metadata", {}).get("close")
     if current_price is None:
-        # Fallback: We can't calculate exact SL price without reference.
-        # But we can return an Intent that says "Entry + X pips".
-        # For simplicity of this function returning FLOATS, let's assume 
-        # we NEED price. If missing, fail or mock (for testing).
-        # In real flow, risk_eval runs AFTER getting a quote or with the signal candle close.
         return OrderIntent(
             valid=False, symbol=symbol, direction=direction,
             size=0.0, sl_price=0.0, tp_price=0.0,
@@ -83,12 +75,15 @@ def evaluate_risk(signal: Dict, account_snapshot: Dict, config: RiskConfig) -> O
         
     sl_pips = config.sl_pips_default
     tp_pips = config.tp_pips_default
-    pip_size = 0.0001 # Standard for pairs like EURUSD
+    pip_size = 0.0001  # Standard for pairs like EURUSD
     
-    if direction == "BUY":
+    # Map direction string to BUY/SELL for SL/TP calculation
+    is_buy = direction in ("BUY", "LONG", SignalType.LONG.value)
+    
+    if is_buy:
         sl_price = current_price - (sl_pips * pip_size)
         tp_price = current_price + (tp_pips * pip_size)
-    else: # SELL
+    else:  # SELL / SHORT
         sl_price = current_price + (sl_pips * pip_size)
         tp_price = current_price - (tp_pips * pip_size)
 

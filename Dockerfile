@@ -14,11 +14,15 @@ RUN apt-get update && apt-get install -y gcc build-essential python3-dev libffi-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create a non-root user
+RUN useradd -m appuser
+
 # Copy application code
 COPY . .
 
-# Create a non-root user and switch to it
-RUN useradd -m appuser && chown -R appuser /app
+# Ensure trade_journal.csv exists and has correct permissions
+RUN touch /app/trade_journal.csv && chown appuser:appuser /app/trade_journal.csv && chown -R appuser:appuser /app
+
 USER appuser
 
 # Entrypoint

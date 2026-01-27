@@ -111,15 +111,15 @@ def analyze_market(log, df, plog):
     
     latest_signal = signals[-1] if signals else None
     
-    if not latest_signal or latest_signal['direction'] not in ['LONG', 'SHORT']:
+    if not latest_signal or latest_signal.direction not in ['LONG', 'SHORT']:
         log.info("Step 3 [Strategy]: NO SIGNAL")
         plog.update(signal="HOLD", reason="Strategy: No Signal")
         # Mark as processed because we analyzed it and found nothing
         state_manager.mark_candle_processed(config.SYMBOL, config.TIMEFRAME, ts_str)
         return None
 
-    plog.update(signal=latest_signal['direction'])
-    log.info(f"Step 3 [Strategy]: SIGN: {latest_signal['direction']}")
+    plog.update(signal=latest_signal.direction)
+    log.info(f"Step 3 [Strategy]: SIGN: {latest_signal.direction}")
     return latest_signal
 
 def check_news_sentiment(log, latest_signal, plog):
@@ -132,10 +132,10 @@ def check_news_sentiment(log, latest_signal, plog):
     is_news_valid = True
     news_reason = "Confirmed"
     
-    if latest_signal['direction'] == 'LONG' and sentiment == 'BEARISH':
+    if latest_signal.direction == 'LONG' and sentiment == 'BEARISH':
         is_news_valid = False
         news_reason = "Sentiment Bearish vs Long"
-    elif latest_signal['direction'] == 'SHORT' and sentiment == 'BULLISH':
+    elif latest_signal.direction == 'SHORT' and sentiment == 'BULLISH':
         is_news_valid = False
         news_reason = "Sentiment Bullish vs Short"
         
@@ -185,7 +185,7 @@ def execute_trade(log, latest_signal, lots, plog):
     exec_intent = OrderIntent(
         idempotency_key=str(uuid.uuid4()),
         symbol=config.SYMBOL,
-        direction=latest_signal['direction'],
+        direction=latest_signal.direction,
         quantity=float(lots),
         order_type="MARKET",
         limit_price=None,
@@ -196,10 +196,10 @@ def execute_trade(log, latest_signal, lots, plog):
     # Calculate SL/TP Distances for IG logic if needed (Points)
     is_jpy = "JPY" in config.SYMBOL
     point_size = 0.01 if is_jpy else 0.0001
-    if latest_signal.get('stop_loss') and latest_signal.get('entry_price'):
-        exec_intent.sl_distance = abs(latest_signal['entry_price'] - latest_signal['stop_loss']) / point_size
-    if latest_signal.get('take_profit') and latest_signal.get('entry_price'):
-        exec_intent.tp_distance = abs(latest_signal['take_profit'] - latest_signal['entry_price']) / point_size
+    if latest_signal.stop_loss and latest_signal.entry_price:
+        exec_intent.sl_distance = abs(latest_signal.entry_price - latest_signal.stop_loss) / point_size
+    if latest_signal.take_profit and latest_signal.entry_price:
+        exec_intent.tp_distance = abs(latest_signal.take_profit - latest_signal.entry_price) / point_size
 
     if config.BROKER == 'ig':
         broker = IGBroker()
