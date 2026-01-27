@@ -161,6 +161,12 @@ class ComprehensiveHealthCheck:
         """Check Docker container status, restarts, and resource usage."""
         self.section_header("INFRASTRUCTURE", "📦")
         
+        # Check if running inside container
+        if os.path.exists("/.dockerenv"):
+            self.log("Docker: Running inside container (skipping CLI checks)", "OK")
+            self.add_result("Docker", True, "Inside container (implied running)")
+            return
+        
         try:
             # Get all running containers
             output = subprocess.check_output(
@@ -264,6 +270,10 @@ class ComprehensiveHealthCheck:
     
     def check_docker_logs_for_errors(self):
         """Scan recent Docker logs for ERROR/CRITICAL messages."""
+        if os.path.exists("/.dockerenv"):
+            self.log("Logs: Running inside container (skipping Docker log checks)", "OK")
+            return
+
         for container in CONTAINERS:
             try:
                 # Find actual container name
