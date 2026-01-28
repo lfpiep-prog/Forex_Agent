@@ -6,7 +6,10 @@ from datetime import datetime
 import numpy as np
 
 # Add execution path to find modules
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir) # Go up one level to 'Forex Agent'
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from execution.market_data import fetch_prices, normalize
 from execution.generate_signals import SignalGenerator
@@ -26,11 +29,11 @@ def run_single_backtest(df, strategy_config):
     trades = []
     
     for sig in signals:
-        entry_time = sig['timestamp']
-        entry_price = sig['entry_price']
-        stop_loss = sig['stop_loss']
-        take_profit = sig['take_profit']
-        direction = sig['direction']
+        entry_time = sig.timestamp
+        entry_price = sig.entry_price
+        stop_loss = sig.stop_loss
+        take_profit = sig.take_profit
+        direction = sig.direction
         
         # Find entry index
         try:
@@ -136,35 +139,22 @@ def run_tournament():
     # Overriding here is safer for the "Test" script without affecting the main "Run Cycle".
     
 def fetch_deep_history(symbol):
-    import yfinance as yf
-    ticker = f"{symbol}=X"
-    print(f"  Downloading {ticker} [Period: 2y]...")
-    df = yf.download(ticker, interval="1h", period="2y", progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.droplevel(1) 
-    df = df.reset_index()
-    # Normalize cols
-    normalized = []
-    for _, row in df.iterrows():
-        ts_col = 'Datetime' if 'Datetime' in df.columns else 'Date'
-        if pd.isna(row.get(ts_col)): continue
-        normalized.append({
-            "timestamp": row[ts_col].isoformat(),
-            "open": float(row['Open']),
-            "high": float(row['High']),
-            "low": float(row['Low']),
-            "close": float(row['Close']),
-            "volume": float(row.get('Volume', 0)),
-            "symbol": symbol,
-            "atr": np.nan, # prepopulate
-            "rsi": np.nan
-        })
-    # Return last 6000
-    if not normalized:
+    print(f"  Fetching deep history for {symbol} (Limit: 6000)...")
+    # Use the unified data provider (Polygon/YFinance/etc via config)
+    raw_data = fetch_prices(symbol, "H1", 6000)
+    
+    if not raw_data:
         return pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'symbol'])
         
-    df_res = pd.DataFrame(normalized).tail(6000)
-    return df_res.reset_index(drop=True)
+    df = normalize(raw_data)
+    
+    # Ensure columns for backtester
+    required = ['open', 'high', 'low', 'close', 'volume']
+    for c in required:
+        if c not in df.columns:
+            df[c] = 0.0
+            
+    return df
 
 def run_deep_tournament():
     print("--- Starting Deep Backtest (H1 / 6000 candles / ~1 Year) ---")
@@ -220,10 +210,10 @@ def run_deep_tournament():
         for sig in signals:
             # 1. Calculate Size (Risk 2%)
             risk_amt = current_balance * 0.02
-            entry = sig['entry_price']
-            sl = sig['stop_loss']
-            tp = sig['take_profit']
-            direction = sig['direction']
+            entry = sig.entry_price
+            sl = sig.stop_loss
+            tp = sig.take_profit
+            direction = sig.direction
             
             dist = abs(entry - sl)
             pip_scalar = 0.01 if "JPY" in sym else 0.0001
@@ -236,7 +226,7 @@ def run_deep_tournament():
             lots = max(0.01, round(lots, 2))
             
             # 2. Simulate Outcome
-            entry_idx = df[df['timestamp'] == sig['timestamp']].index[0]
+            entry_idx = df[df['timestamp'] == sig.timestamp].index[0]
             future = df.iloc[entry_idx+1:]
             
             outcome = None

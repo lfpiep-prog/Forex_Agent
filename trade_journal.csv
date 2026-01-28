@@ -48,3 +48,5 @@ timestamp,symbol,action,price,size,stop_loss,take_profit,rr_ratio,reason,result
 2026-01-26T16:00:04.819425,dc3ed39b-8ed2-4a79-b5c3-ffebc51a8ada,USDJPY,0.0,NONE,N/A,SKIPPED,0.0,Data: No prices returned
 2026-01-27T05:05:12.553833,dc3ed39b-8ed2-4a79-b5c3-ffebc51a8ada,USDJPY,0.0,NONE,N/A,SKIPPED,0.0,Data: No prices returned
 2026-01-27T06:00:04.699845,dc3ed39b-8ed2-4a79-b5c3-ffebc51a8ada,USDJPY,0.0,NONE,N/A,SKIPPED,0.0,Data: No prices returned
+2026-01-27T12:00:04.881677,63c0f39d-9337-49b4-b8d7-d881b2821c4d,USDJPY,0.0,NONE,N/A,SKIPPED,0.0,Data: No prices returned
+2026-01-28T12:04:55.293016,63c0f39d-9337-49b4-b8d7-d881b2821c4d,USDJPY,0.0,NONE,N/A,SKIPPED,0.0,Data: No prices returned

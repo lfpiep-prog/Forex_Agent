@@ -5,6 +5,7 @@ import pandas as pd
 import time
 from datetime import datetime, timezone, timedelta
 import uuid
+from typing import Optional, Any
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,6 +15,7 @@ from execution.logger import setup_logger, PipelineLogger
 from execution.generate_signals import SignalGenerator
 from execution.config import config
 from execution.execute_order import ExecutionRouter, OrderIntent
+from execution.models import OrderSide, OrderType, OrderStatus
 from execution.brokers.mock_broker import MockBroker
 from execution.brokers.ig_broker import IGBroker
 from execution.account import AccountManager
@@ -22,7 +24,7 @@ from data.mcp_client import MCPDataClient
 from execution.state_manager import StateManager
 from execution.notifier import DiscordNotifier
 
-def check_time_constraints(log, plog):
+def check_time_constraints(log: Any, plog: PipelineLogger) -> bool:
     """Checks if trading is allowed at the current time."""
     time_filter = TimeFilter()
     is_open, time_reason = time_filter.is_trading_allowed(datetime.utcnow())
@@ -35,7 +37,7 @@ def check_time_constraints(log, plog):
     log.info("Step 1 [Time]: PASSED")
     return True
 
-def fetch_and_prepare_data(log, plog):
+def fetch_and_prepare_data(log: Any, plog: PipelineLogger) -> Optional[pd.DataFrame]:
     """Fetches and normalizes price data with retry logic for delayed candles."""
     
     # Target: The candle that just closed (Current Hour rounded down - 1h)
@@ -89,7 +91,7 @@ def fetch_and_prepare_data(log, plog):
     # Return both DF and the timestamp of the last candle for idempotency
     return df
 
-def analyze_market(log, df, plog):
+def analyze_market(log: Any, df: pd.DataFrame, plog: PipelineLogger) -> Any:
     """Generates trading signals from the data."""
     log.info("Step 3 [Strategy]: Analyzing...")
     
@@ -111,9 +113,9 @@ def analyze_market(log, df, plog):
     
     latest_signal = signals[-1] if signals else None
     
-    if not latest_signal or latest_signal.direction not in ['LONG', 'SHORT']:
+    if not latest_signal or latest_signal.direction not in [OrderSide.LONG.value, OrderSide.SHORT.value, 'LONG', 'SHORT']:
         log.info("Step 3 [Strategy]: NO SIGNAL")
-        plog.update(signal="HOLD", reason="Strategy: No Signal")
+        plog.update(signal=OrderSide.HOLD.value, reason="Strategy: No Signal")
         # Mark as processed because we analyzed it and found nothing
         state_manager.mark_candle_processed(config.SYMBOL, config.TIMEFRAME, ts_str)
         return None
@@ -122,7 +124,7 @@ def analyze_market(log, df, plog):
     log.info(f"Step 3 [Strategy]: SIGN: {latest_signal.direction}")
     return latest_signal
 
-def check_news_sentiment(log, latest_signal, plog):
+def check_news_sentiment(log: Any, latest_signal: Any, plog: PipelineLogger) -> bool:
     """Filters signals based on news sentiment."""
     log.info("Step 4 [News]: Checking Sentiment...")
     mcp = MCPDataClient()
@@ -132,10 +134,13 @@ def check_news_sentiment(log, latest_signal, plog):
     is_news_valid = True
     news_reason = "Confirmed"
     
-    if latest_signal.direction == 'LONG' and sentiment == 'BEARISH':
+    # Normalize direction to match Enum/String
+    direction = latest_signal.direction
+    
+    if direction in [OrderSide.LONG.value, 'LONG'] and sentiment == 'BEARISH':
         is_news_valid = False
         news_reason = "Sentiment Bearish vs Long"
-    elif latest_signal.direction == 'SHORT' and sentiment == 'BULLISH':
+    elif direction in [OrderSide.SHORT.value, 'SHORT'] and sentiment == 'BULLISH':
         is_news_valid = False
         news_reason = "Sentiment Bullish vs Short"
         
@@ -147,8 +152,8 @@ def check_news_sentiment(log, latest_signal, plog):
     log.info(f"Step 4 [News]: PASSED ({sentiment})")
     return True
 
-def assess_risk(log, latest_signal, plog):
-    """Calculates position size and validates risk."""
+def assess_risk(log: Any, latest_signal: Any, plog: PipelineLogger) -> float:
+    """Calculates position size and validates risk. Returns lots (float) or False (bool) if failed/0."""
     log.info("Step 5 [Risk]: Calculating Size...")
     
     # Sync Live Equity First
@@ -170,7 +175,8 @@ def assess_risk(log, latest_signal, plog):
     if not is_safe:
         log.info(f"Step 5 [Risk]: BLOCKED ({risk_reason})")
         plog.update(decision="BLOCKED_RISK", reason=risk_reason)
-        return False
+        return 0.0 # Return 0.0 as failure indicator (consistent with type hint float/bool ambiguity in loose python)
+                 # Ideally this should return Optional[float]
 
     # Extract Size from Risk Calc
     lots = recommended_lots
@@ -178,24 +184,28 @@ def assess_risk(log, latest_signal, plog):
     log.info(f"Step 5 [Risk]: PASSED (Size: {lots})")
     return lots
 
-def execute_trade(log, latest_signal, lots, plog):
+def execute_trade(log: Any, latest_signal: Any, lots: float, plog: PipelineLogger) -> None:
     """Executes the trade order."""
     log.info("Step 6 [Exec]: Submitting Order...")
     
+    # Ensure compatible enum type
+    side = OrderSide.LONG if latest_signal.direction in ['LONG', OrderSide.LONG.value] else OrderSide.SHORT
+
     exec_intent = OrderIntent(
         idempotency_key=str(uuid.uuid4()),
         symbol=config.SYMBOL,
-        direction=latest_signal.direction,
+        direction=side,
         quantity=float(lots),
-        order_type="MARKET",
+        order_type=OrderType.MARKET,
         limit_price=None,
         sl_distance=None, 
         tp_distance=None
     )
     
     # Calculate SL/TP Distances for IG logic if needed (Points)
-    is_jpy = "JPY" in config.SYMBOL
-    point_size = 0.01 if is_jpy else 0.0001
+    # Use centralized utility from risk module
+    point_size = risk.get_point_size(config.SYMBOL)
+    
     if latest_signal.stop_loss and latest_signal.entry_price:
         exec_intent.sl_distance = abs(latest_signal.entry_price - latest_signal.stop_loss) / point_size
     if latest_signal.take_profit and latest_signal.entry_price:
@@ -211,22 +221,21 @@ def execute_trade(log, latest_signal, lots, plog):
     
     log.info(f"Step 6 [Exec]: DONE (Status: {result.status})")
     
-    plog.update(decision=result.status, reason="Executed" if result.status in ["FILLED", "SUBMITTED"] else f"Exec Failed: {result.error_message}")
+    plog.update(decision=result.status, reason="Executed" if result.status in [OrderStatus.FILLED.value, OrderStatus.SUBMITTED.value, "FILLED", "SUBMITTED"] else f"Exec Failed: {result.error_message}")
 
     # CRITICAL: Mark candle as processed FIRST (before Discord notification)
     # This prevents duplicate notifications if the process crashes between notification and state save
     state_manager = StateManager()
     # Get the candle timestamp (will be fetched again in run_pipeline, but critical for idempotency here)
-    # Pass df as parameter in future refactor
     pass  # Timestamp handling moved to run_pipeline for proper orchestration
 
     # --- NOTIFICATION ---
     # Only send notification AFTER state is marked as processed
-    if result.status in ["FILLED", "SUBMITTED"]:
+    if result.status in [OrderStatus.FILLED.value, OrderStatus.SUBMITTED.value, "FILLED", "SUBMITTED"]:
         notifier = DiscordNotifier()
         notifier.send_trade_alert(latest_signal, exec_intent, result)
 
-def run_pipeline():
+def run_pipeline() -> None:
     log = setup_logger()
     
     with PipelineLogger() as plog:
@@ -245,7 +254,7 @@ def run_pipeline():
             if not check_news_sentiment(log, latest_signal, plog): return
 
             lots = assess_risk(log, latest_signal, plog)
-            if lots is False: return
+            if not lots or lots <= 0: return
 
             # CRITICAL: Mark candle as processed BEFORE execution
             # This prevents duplicate trades if the process crashes during execution or notification

@@ -21,6 +21,7 @@ class Provider:
     IG = "ig"
     BROKER = "broker" # Alias for IG usually
     TWELVEDATA = "twelvedata"
+    POLYGON = "polygon"
 
 class CandleKeys:
     TIMESTAMP = "timestamp"
@@ -246,6 +247,75 @@ class TwelveDataAdapter(DataProvider):
         raw_data.sort(key=lambda x: x[CandleKeys.TIMESTAMP])
         return raw_data
 
+class PolygonAdapter(DataProvider):
+    """Adapter for Polygon.io."""
+    
+    TF_MAP = {
+        Timeframe.H1: ("hour", 1), 
+        Timeframe.M1: ("minute", 1), 
+        Timeframe.M15: ("minute", 15), 
+        Timeframe.D1: ("day", 1)
+    }
+    
+    def fetch_data(self, symbol: str, timeframe: str, limit: int = 100) -> List[Candle]:
+        self._log_fetch("Polygon", symbol, timeframe)
+        
+        try:
+            from execution.data_sources.polygon_source import PolygonSource
+            source = PolygonSource()
+            
+            timespan, multiplier = self.TF_MAP.get(timeframe, ("hour", 1))
+
+            end_dt = datetime.utcnow()
+            
+            # Estimate start time (minutes calculation)
+            if timespan == "hour":
+                minutes_per_candle = 60 * multiplier
+            elif timespan == "day":
+                minutes_per_candle = 1440 * multiplier
+            else: # minute
+                minutes_per_candle = multiplier
+            
+            total_minutes = limit * minutes_per_candle
+            # Buffer for weekends/holidays (x1.6)
+            buffer_min = int(total_minutes * 1.6)
+            
+            start_dt = end_dt - pd.Timedelta(minutes=buffer_min)
+            
+            # Format YYYY-MM-DD
+            s_date = start_dt.strftime("%Y-%m-%d")
+            e_date = end_dt.strftime("%Y-%m-%d")
+            
+            df = source.fetch_candles(symbol, s_date, e_date, timespan=timespan, multiplier=multiplier)
+            
+            if df.empty:
+                logger.warning(f"[Polygon] No data for {symbol}.")
+                return []
+            
+            data = self._process_dataframe(df, symbol)
+            return data[-limit:] # Ensure we return only requested amount
+            
+        except Exception as e:
+            logger.error(f"[Polygon] Error: {e}")
+            return []
+
+    def _process_dataframe(self, df: pd.DataFrame, symbol: str) -> List[Candle]:
+        df = df.reset_index(drop=True)
+        raw_data = []
+        for _, row in df.iterrows():
+            raw_data.append({
+                CandleKeys.TIMESTAMP: row['timestamp'].isoformat(),
+                CandleKeys.OPEN: float(row['open']),
+                CandleKeys.HIGH: float(row['high']),
+                CandleKeys.LOW: float(row['low']),
+                CandleKeys.CLOSE: float(row['close']),
+                CandleKeys.VOLUME: float(row.get('volume', 0)),
+                CandleKeys.SYMBOL: symbol
+            })
+        
+        raw_data.sort(key=lambda x: x[CandleKeys.TIMESTAMP])
+        return raw_data
+
 class MockDataProvider(DataProvider):
     def fetch_data(self, symbol, timeframe, limit=100):
         logger.warning("[MockProvider] Returning empty mock data.")
@@ -260,7 +330,8 @@ def get_provider() -> DataProvider:
         Provider.YFINANCE: YFinanceAdapter,
         Provider.IG: BrokerAPIAdapter,
         Provider.BROKER: BrokerAPIAdapter,
-        Provider.TWELVEDATA: TwelveDataAdapter
+        Provider.TWELVEDATA: TwelveDataAdapter,
+        Provider.POLYGON: PolygonAdapter
     }
     
     provider_class = providers.get(provider_key, MockDataProvider)

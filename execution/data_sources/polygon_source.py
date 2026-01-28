@@ -11,17 +11,13 @@ class PolygonSource(BaseSource):
             raise ValueError("POLYGON_API_KEY not found in environment variables.")
         self.client = RESTClient(self.api_key)
 
-    def fetch_candles(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+    def fetch_candles(self, symbol: str, start_date: str, end_date: str, timespan: str = "minute", multiplier: int = 1) -> pd.DataFrame:
         """
         Fetch aggregated bars (candles) for a forex pair.
         symbol: e.g. "EURUSD" -> "C:EURUSD"
         """
         # Polygon Forex symbols usually prefixed with "C:"
         ticker = f"C:{symbol}" if not symbol.startswith("C:") else symbol
-        
-        # Determine timeframe - default to 1 minute for "reading candles" capacity
-        multiplier = 1
-        timespan = "minute"
         
         # Fetch agg v2
         aggs = []

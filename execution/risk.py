@@ -1,7 +1,9 @@
-from typing import Tuple, Dict, Any, Union
+from typing import Tuple, Dict, Any, Union, Optional
+from execution.config import config
+from execution.models import OrderSide
 
 # Constants
-RISK_PERCENT = 0.02
+RISK_PERCENT = config.RISK_CONFIG.risk_per_trade_pct / 100.0 if config.RISK_CONFIG else 0.02
 LOT_SIZE = 100_000
 MIN_LOT_SIZE = 0.01
 
@@ -86,7 +88,10 @@ def risk_eval(signal: Union[Dict[str, Any], Any], account_snapshot: Dict[str, fl
 def _validate_signal(signal: Dict[str, Any], account: Dict[str, float]) -> Tuple[bool, str]:
     if not signal:
         return False, "No signal provided"
-    if signal.get('direction') == 'HOLD':
+        
+    direction = signal.get('direction')
+    # Use Enum value or string check
+    if direction == OrderSide.HOLD.value or direction == "HOLD":
         return False, "Signal is HOLD"
     
     equity = account.get('equity', 0)
@@ -100,13 +105,16 @@ def _validate_signal(signal: Dict[str, Any], account: Dict[str, float]) -> Tuple
         
     return True, ""
 
+def get_point_size(symbol: str) -> float:
+    """Returns the point size for a given symbol (e.g. 0.01 for JPY, 0.0001 for others)."""
+    return 0.01 if "JPY" in symbol else 0.0001
+
 def _calculate_sl_pips(entry: float, sl: float, symbol: str) -> Tuple[float, str]:
     distance = abs(entry - sl)
     if distance == 0:
         return 0.0, "Invalid SL Distance (0)"
         
-    is_jpy = "JPY" in symbol
-    point_size = 0.01 if is_jpy else 0.0001
+    point_size = get_point_size(symbol)
     
     sl_pips = distance / point_size
     return sl_pips, ""

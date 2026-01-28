@@ -27,7 +27,7 @@ class Config:
     
     # System
     LOG_LEVEL = "INFO"
-    DATA_PROVIDER = os.getenv("DATA_PROVIDER", "twelvedata") # Options: yfinance, mock, ig, twelvedata
+    DATA_PROVIDER = os.getenv("DATA_PROVIDER", "polygon") # Options: yfinance, mock, ig, twelvedata, polygon
     BROKER = os.getenv("BROKER", "ig") # Options: mock, ig
 
     # Safety & Broker
