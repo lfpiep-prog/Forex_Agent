@@ -156,7 +156,8 @@ class DynamicValidator:
                 json_end = remote_health_json.rfind('}') + 1
                 if json_start != -1 and json_end != -1:
                     data = json.loads(remote_health_json[json_start:json_end])
-                    remote_health_status = data.get("overall_status", "Unknown")
+                    failed_count = data.get("failed", 0)
+                    remote_health_status = "OK" if failed_count == 0 else f"Failed ({failed_count} errors)"
                 else:
                     # If no JSON found, it might be an error message (like "unrecognized arguments")
                     if "unrecognized arguments: --json" in remote_health_json:

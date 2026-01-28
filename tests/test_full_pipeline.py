@@ -4,7 +4,7 @@ Tests: Config -> Data Fetch -> Signal Generation -> Risk Eval (No Execution)
 """
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,8 +22,8 @@ print(f"  STRATEGY: {config.STRATEGY}")
 print(f"  DATA_PROVIDER: {config.DATA_PROVIDER}")
 print(f"  BROKER: {config.BROKER}")
 
-if config.DATA_PROVIDER.lower() != "twelvedata":
-    print("  ERROR: DATA_PROVIDER is not 'twelvedata'. Check .env!")
+if config.DATA_PROVIDER.lower() not in ["twelvedata", "polygon"]:
+    print(f"  ERROR: DATA_PROVIDER '{config.DATA_PROVIDER}' is not supported/tested here. Check .env!")
     sys.exit(1)
 print("  --> Config OK")
 

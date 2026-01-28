@@ -3,6 +3,9 @@ services:
   agent:
     build: .
     restart: always
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       - macro-server
     volumes:
@@ -10,6 +13,8 @@ services:
       - ./trade_journal.csv:/app/trade_journal.csv
       - ./logs:/app/logs
       - ./trades.db:/app/trades.db
+    tmpfs:
+      - /tmp
     env_file:
       - .env
     environment:
@@ -23,10 +28,15 @@ services:
   macro-server:
     build: ./execution/macro_server
     restart: always
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000" # Localhost only - not exposed externally
     env_file:
       - .env
     volumes:
       # Persist the macro data database
       - ./macro_data.db:/app/macro_data.db
+    tmpfs:
+      - /tmp

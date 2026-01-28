@@ -21,6 +21,29 @@ def get_run_id() -> str:
     """Returns the unique run_id for the current execution."""
     return RUN_ID
 
+# Keys that should be masked in logs
+SENSITIVE_KEYS = ['password', 'api_key', 'token', 'secret', 'key', 'credential']
+
+def sanitize_log_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Remove or mask sensitive values from log data.
+    Recursively sanitizes nested dictionaries.
+    """
+    if not isinstance(data, dict):
+        return data
+    
+    sanitized = {}
+    for key, value in data.items():
+        key_lower = key.lower()
+        if any(s in key_lower for s in SENSITIVE_KEYS):
+            sanitized[key] = '***REDACTED***'
+        elif isinstance(value, dict):
+            sanitized[key] = sanitize_log_data(value)
+        else:
+            sanitized[key] = value
+    return sanitized
+
+
 class JsonFormatter(logging.Formatter):
     """
     Formatter to output logs in JSON format.
