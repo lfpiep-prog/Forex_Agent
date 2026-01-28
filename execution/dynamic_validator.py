@@ -145,7 +145,8 @@ class DynamicValidator:
         # We can try to run the remote health check script if it exists
         print("   Running remote health check...")
         cmd_health = "cd ~/Forex_Agent && python3 -m execution.scripts.check_system --json"
-        remote_health_json = run_remote_command(cmd_health)
+        # Allow non-zero exit code (script returns 1 on failure, but still prints JSON)
+        remote_health_json = run_remote_command(cmd_health, raise_on_error=False)
         
         remote_health_status = "Unknown"
         if remote_health_json:

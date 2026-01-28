@@ -57,7 +57,7 @@ def load_env_manual():
                         if key not in os.environ:
                             os.environ[key] = value
         except Exception as e:
-            print(f"Warning: Failed to load .env manually: {e}")
+            sys.stderr.write(f"Warning: Failed to load .env manually: {e}\n")
 
 load_env_manual()
 

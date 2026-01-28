@@ -10,18 +10,24 @@ logger = logging.getLogger(__name__)
 
 SERVER_ALIAS = "forex"
 
-def run_remote_command(command, alias=SERVER_ALIAS):
+def run_remote_command(command, alias=SERVER_ALIAS, raise_on_error=True):
     """
     Executes a command on the remote server via SSH.
     """
     ssh_cmd = ["ssh", alias, command]
     try:
         logger.info(f"Executing remote command: {command}")
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, check=True)
+        # Capture both stdout and stderr
+        result = subprocess.run(ssh_cmd, capture_output=True, text=True, check=False)
+        
+        if result.returncode != 0:
+            if raise_on_error:
+                logger.error(f"Command failed with exit code {result.returncode}: {result.stderr}")
+                return None
+            else:
+                logger.warning(f"Command finished with exit code {result.returncode} (suppressed)")
+
         return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Command failed with error: {e.stderr}")
-        return None
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
         return None

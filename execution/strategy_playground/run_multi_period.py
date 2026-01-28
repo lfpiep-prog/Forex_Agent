@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 
 from backtesting import Backtest
 from execution.strategy_playground.loader import load_data
-from execution.strategy_playground.strategies.alligator_trend import AlligatorTrendStrategy
+from execution.strategy_playground.strategies.fractal_order_block import FractalOrderBlockStrategy
 import pandas as pd
 
 def run_tests():
@@ -23,10 +23,11 @@ def run_tests():
         "2 Years": end_date - relativedelta(years=2)
     }
     
-    symbol = "USDJPY"
+    # Engulfing works on most pairs, GBPUSD has good volatility
+    symbol = "GBPUSD"
     
     print(f"========================================")
-    print(f"STRATEGY TEST CENTER: Alligator Trend")
+    print(f"STRATEGY TEST CENTER: Fractal/Engulfing OB")
     print(f"Symbol: {symbol}")
     print(f"Ends: {end_date.strftime('%Y-%m-%d')}")
     print(f"========================================\n")
@@ -39,8 +40,8 @@ def run_tests():
         
         try:
             # 1. Fetch Data
-            # Timeframe: hour, Multiplier 1 (H1)
-            df = load_data(symbol, start_str, end_str, timeframe='hour', multiplier=1)
+            # Timeframe: minute, Multiplier 15 (M15)
+            df = load_data(symbol, start_str, end_str, timeframe='minute', multiplier=15)
             
             if df.empty:
                 print(f"[X] No data found for {name} period.")
@@ -50,7 +51,7 @@ def run_tests():
 
             # 2. Run Backtest
             # Margin=0.02 means 50:1 leverage. Needed for Forex lot sizes.
-            bt = Backtest(df, AlligatorTrendStrategy, cash=10000, commission=.0002, margin=0.02)
+            bt = Backtest(df, FractalOrderBlockStrategy, cash=10000, commission=.0002, margin=0.02)
             stats = bt.run()
             
             # 3. Print Key Metrics
