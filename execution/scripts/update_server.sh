@@ -18,7 +18,7 @@ echo "=== 3. Verifying System Health ==="
 echo "Waiting 10 seconds for service initialization..."
 sleep 10
 # Run health check inside the container to ensure dependencies (pandas, etc.) are available
-docker compose exec -T agent python check_system.py
+docker compose exec -T agent python execution/scripts/check_system.py
 
 
 echo ""
