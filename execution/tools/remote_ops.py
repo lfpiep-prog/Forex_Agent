@@ -35,6 +35,16 @@ def restart_docker_services():
     cmd = "cd ~/Forex_Agent && docker compose restart"
     return run_remote_command(cmd)
 
+def rebuild_and_restart():
+    """
+    Rebuilds and restarts the Docker services on the remote server.
+    Useful when code changes are not volume-mounted.
+    """
+    logger.info("Rebuilding and restarting Docker services...")
+    # Navigate to directory and rebuild
+    cmd = "cd ~/Forex_Agent && docker compose down && docker compose up -d --build"
+    return run_remote_command(cmd)
+
 def get_docker_logs(service_name="forex_agent", lines=50):
     """
     Fetches the last N lines of logs for a specific service.

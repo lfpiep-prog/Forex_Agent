@@ -122,6 +122,8 @@ class ComprehensiveHealthCheck:
     
     def log(self, message: str, status: str = "INFO"):
         """Print formatted logs with emoji indicators."""
+        if hasattr(self, 'json_mode') and self.json_mode:
+            return
         symbols = {
             "INFO": "ℹ️ ",
             "OK": "✅",
@@ -146,10 +148,13 @@ class ComprehensiveHealthCheck:
         status = "OK" if passed else "FAIL"
         self.log(f"{name}: {message}", status)
         if details and not passed:
-            print(f"   └── {details}")
+            if not (hasattr(self, 'json_mode') and self.json_mode):
+                print(f"   └── {details}")
     
     def section_header(self, title: str, emoji: str):
         """Print a section header."""
+        if hasattr(self, 'json_mode') and self.json_mode:
+            return
         print(f"\n{Colors.BOLD}{'━' * 50}{Colors.ENDC}")
         print(f"{emoji} {Colors.BOLD}{title}{Colors.ENDC}")
         print(f"{Colors.BOLD}{'━' * 50}{Colors.ENDC}")
@@ -659,15 +664,18 @@ class ComprehensiveHealthCheck:
     # MAIN RUN METHOD
     # ========================================================================
     
+
     def run(self):
         """Run all health checks and generate report."""
         self.start_time = time.time()
         
-        print(f"\n{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
-        print(f"🚀 {Colors.BOLD}Comprehensive System Health Check{Colors.ENDC}")
-        print(f"{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
-        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Mode: {'FULL (includes external API checks)' if self.full_mode else 'QUICK (no external API calls)'}")
+        # Suppress output if JSON mode is on
+        if not hasattr(self, 'json_mode') or not self.json_mode:
+            print(f"\n{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
+            print(f"🚀 {Colors.BOLD}Comprehensive System Health Check{Colors.ENDC}")
+            print(f"{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
+            print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Mode: {'FULL (includes external API checks)' if self.full_mode else 'QUICK (no external API calls)'}")
         
         # Run all checks
         self.check_docker_containers()
@@ -695,20 +703,39 @@ class ComprehensiveHealthCheck:
         failed = sum(1 for r in self.results if not r.passed)
         total = len(self.results)
         
-        print(f"\n{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
-        if failed == 0:
-            print(f"✅ {Colors.GREEN}{Colors.BOLD}SYSTEM CHECK PASSED{Colors.ENDC}")
+        if hasattr(self, 'json_mode') and self.json_mode:
+            output = {
+                "timestamp": datetime.now().isoformat(),
+                "duration": elapsed,
+                "passed": passed,
+                "failed": failed,
+                "total": total,
+                "results": [
+                    {
+                        "name": r.name,
+                        "passed": r.passed,
+                        "message": r.message,
+                        "details": r.details
+                    }
+                    for r in self.results
+                ]
+            }
+            print(json.dumps(output, indent=2))
         else:
-            print(f"❌ {Colors.RED}{Colors.BOLD}SYSTEM CHECK FAILED{Colors.ENDC}")
-        print(f"{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
-        print(f"Results: {passed}/{total} checks passed ({failed} failed)")
-        print(f"Duration: {elapsed:.1f} seconds")
-        
-        if failed > 0:
-            print(f"\n{Colors.RED}Failed checks:{Colors.ENDC}")
-            for r in self.results:
-                if not r.passed:
-                    print(f"  ❌ {r.name}: {r.message}")
+            print(f"\n{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
+            if failed == 0:
+                print(f"✅ {Colors.GREEN}{Colors.BOLD}SYSTEM CHECK PASSED{Colors.ENDC}")
+            else:
+                print(f"❌ {Colors.RED}{Colors.BOLD}SYSTEM CHECK FAILED{Colors.ENDC}")
+            print(f"{Colors.BOLD}{'═' * 50}{Colors.ENDC}")
+            print(f"Results: {passed}/{total} checks passed ({failed} failed)")
+            print(f"Duration: {elapsed:.1f} seconds")
+            
+            if failed > 0:
+                print(f"\n{Colors.RED}Failed checks:{Colors.ENDC}")
+                for r in self.results:
+                    if not r.passed:
+                        print(f"  ❌ {r.name}: {r.message}")
         
         sys.exit(0 if failed == 0 else 1)
 
@@ -726,7 +753,13 @@ if __name__ == "__main__":
         action="store_true",
         help="Run full checks including external API calls (broker, data provider)"
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results in JSON format"
+    )
     args = parser.parse_args()
     
     check = ComprehensiveHealthCheck(full_mode=args.full)
+    check.json_mode = args.json
     check.run()

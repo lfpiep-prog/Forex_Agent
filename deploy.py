@@ -6,15 +6,6 @@ import time
 # Force UTF-8 encoding for Windows console
 sys.stdout.reconfigure(encoding='utf-8')
 
-# Ensure tools are importable
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/tools")
-try:
-    from remote_ops import run_remote_command, restart_docker_services, get_docker_logs
-except ImportError:
-    # Fallback if running from root
-    sys.path.append(os.path.abspath("tools"))
-    from remote_ops import run_remote_command, restart_docker_services, get_docker_logs
-
 def check_git_status():
     """Checks if there are uncommitted changes."""
     print("🔍 Checking Git status...")
@@ -40,9 +31,17 @@ def git_push():
         sys.exit(1)
 
 def deploy_remote():
-    """Triggers the pull and restart on the server."""
+    """Triggers the pull and rebuild on the server."""
     print("\n🌍 Connecting to server 'forex' to deploy...")
     
+    # Imports here to avoid issues if verification fails early
+    try:
+        from execution.tools.remote_ops import run_remote_command, rebuild_and_restart
+    except ImportError:
+        # If running from root, execution is a package
+        sys.path.append(os.path.abspath(os.getcwd()))
+        from execution.tools.remote_ops import run_remote_command, rebuild_and_restart
+
     # 1. Git Pull
     print("   ⬇️  Pulling latest code...")
     pull_result = run_remote_command("cd ~/Forex_Agent && git pull")
@@ -52,9 +51,9 @@ def deploy_remote():
         print("❌ Failed to pull code on server.")
         sys.exit(1)
 
-    # 2. Restart Containers
-    print("   🔄 Restarting Docker containers...")
-    restart_result = restart_docker_services()
+    # 2. Rebuild and Restart Containers
+    print("   nm 🔄 Rebuilding and Restarting Docker containers...")
+    restart_result = rebuild_and_restart()
     if restart_result is not None:
         print("✅ Server restarted successfully.")
         if restart_result:
@@ -65,20 +64,26 @@ def deploy_remote():
 
 def health_check():
     """Verifies the deployment."""
+    try:
+        from execution.tools.remote_ops import run_remote_command
+    except ImportError:
+        sys.path.append(os.path.abspath(os.getcwd()))
+        from execution.tools.remote_ops import run_remote_command
+
     print("\n🏥 Performing Health Check...")
-    print("   ⏳ Waiting 10 seconds for service startup...")
-    time.sleep(10)
+    print("   ⏳ Waiting 15 seconds for service startup...")
+    time.sleep(15)
     
     status_output = run_remote_command("docker ps -a --format 'table {{.Names}}\t{{.Status}}'")
     print(status_output)
 
-    if "Up" in status_output:
+    if "Up" in str(status_output):
         print("✅ Deployment verified: Services are UP.")
     else:
         print("⚠️  Warning: Services might not be running correctly. Check logs.")
 
 if __name__ == "__main__":
-    print("=== Forex Agent Auto-Deploy ===")
+    print("=== Forex Agent Auto-Deploy (Semi-Automated) ===")
     check_git_status()
     git_push()
     deploy_remote()

@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 
 from backtesting import Backtest
 from execution.strategy_playground.loader import load_data
-from execution.strategy_playground.strategies.sma_rsi_atr import SmaRsiAtrStrategy
+from execution.strategy_playground.strategies.alligator_trend import AlligatorTrendStrategy
 import pandas as pd
 
 def run_tests():
@@ -26,7 +26,7 @@ def run_tests():
     symbol = "USDJPY"
     
     print(f"========================================")
-    print(f"STRATEGY TEST CENTER: SMA 10/30 + RSI")
+    print(f"STRATEGY TEST CENTER: Alligator Trend")
     print(f"Symbol: {symbol}")
     print(f"Ends: {end_date.strftime('%Y-%m-%d')}")
     print(f"========================================\n")
@@ -50,7 +50,7 @@ def run_tests():
 
             # 2. Run Backtest
             # Margin=0.02 means 50:1 leverage. Needed for Forex lot sizes.
-            bt = Backtest(df, SmaRsiAtrStrategy, cash=10000, commission=.0002, margin=0.02)
+            bt = Backtest(df, AlligatorTrendStrategy, cash=10000, commission=.0002, margin=0.02)
             stats = bt.run()
             
             # 3. Print Key Metrics

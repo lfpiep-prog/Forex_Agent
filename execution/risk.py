@@ -37,6 +37,8 @@ def _normalize_signal(signal: Any) -> Dict[str, Any]:
              
     return d
 
+from execution.risk_limits import RiskManager
+
 def risk_eval(signal: Union[Dict[str, Any], Any], account_snapshot: Dict[str, float]) -> Tuple[bool, str, float]:
     """
     Evaluates risk and calculates a recommended position size.
@@ -52,11 +54,20 @@ def risk_eval(signal: Union[Dict[str, Any], Any], account_snapshot: Dict[str, fl
     if not is_valid:
         return False, validation_msg, 0.0
 
-    # 1. Calculate Risk Amount ($)
-    equity = account_snapshot.get('equity', 0.0)
-    risk_amount = equity * RISK_PERCENT
+    # --- INTEGRATION: Risk Manager (Internal Alerts) ---
+    risk_manager = RiskManager(config.RISK_CONFIG)
+    
+    # 1. Check Daily Limits
+    limit_check = risk_manager.check_daily_limits(account_snapshot)
+    if not limit_check["allowed"]:
+        return False, limit_check["reason"], 0.0
 
-    # 2. Get SL Distance (Pips)
+    # 2. Calculate Risk Amount ($)
+    equity = account_snapshot.get('equity', 0.0)
+    risk_percent = config.RISK_CONFIG.risk_per_trade_pct if config.RISK_CONFIG else RISK_PERCENT * 100
+    risk_amount = equity * (risk_percent / 100.0)
+
+    # 3. Get SL Distance (Pips)
     entry = signal.get('entry_price')
     sl = signal.get('stop_loss')
     symbol = signal.get('symbol', 'USDJPY')
@@ -65,7 +76,7 @@ def risk_eval(signal: Union[Dict[str, Any], Any], account_snapshot: Dict[str, fl
     if pip_error:
         return False, pip_error, 0.0
     
-    # 3. Pip Value & Lot Calculation
+    # 4. Pip Value & Lot Calculation
     pip_value_per_lot = _get_pip_value(symbol, entry)
     
     if sl_pips == 0 or pip_value_per_lot == 0:
@@ -77,11 +88,16 @@ def risk_eval(signal: Union[Dict[str, Any], Any], account_snapshot: Dict[str, fl
     except ZeroDivisionError:
         return False, "Zero Division in Size Calc", 0.0
 
-    # 4. Rounding & Limits
+    # 5. Rounding & Limits
     position_size = round(raw_size, 2)
     
     if position_size < MIN_LOT_SIZE:
         return False, f"Calculated Size {position_size} < Min {MIN_LOT_SIZE}", 0.0
+
+    # 6. Check Exposure Limits
+    exposure_check = risk_manager.check_exposure_limits(account_snapshot, position_size)
+    if not exposure_check["allowed"]:
+         return False, exposure_check["reason"], 0.0
 
     return True, f"Risk Approved: {position_size} lots ({risk_amount:.2f}$ Risk)", position_size
 
