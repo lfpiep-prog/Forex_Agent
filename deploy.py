@@ -30,62 +30,28 @@ def git_push():
         print("❌ Failed to push to git. Please check your network/credentials.")
         sys.exit(1)
 
-def deploy_remote():
-    """Triggers the pull and rebuild on the server."""
-    print("\n🌍 Connecting to server 'forex' to deploy...")
-    
-    # Imports here to avoid issues if verification fails early
-    try:
-        from execution.tools.remote_ops import run_remote_command, rebuild_and_restart
-    except ImportError:
-        # If running from root, execution is a package
-        sys.path.append(os.path.abspath(os.getcwd()))
-        from execution.tools.remote_ops import run_remote_command, rebuild_and_restart
+def show_server_instructions():
+    """Shows manual server deployment instructions after push."""
+    print("\n" + "=" * 50)
+    print("📋 MANUAL SERVER DEPLOYMENT REQUIRED")
+    print("=" * 50)
+    print("\n🔗 Step 1: SSH into the server:")
+    print("   ssh forex")
+    print("\n🔄 Step 2: Run the update script:")
+    print("   cd ~/Forex_Agent && bash execution/scripts/update_server.sh")
+    print("\n   OR run commands individually:")
+    print("   cd ~/Forex_Agent")
+    print("   git pull origin main")
+    print("   docker compose down && docker compose up -d --build")
+    print("\n🏥 Step 3: Verify deployment:")
+    print("   docker ps")
+    print("   docker logs forex_agent-agent-1 --tail 50")
+    print("\n" + "=" * 50)
 
-    # 1. Git Pull
-    print("   ⬇️  Pulling latest code...")
-    pull_result = run_remote_command("cd ~/Forex_Agent && git pull")
-    if pull_result:
-        print(f"      {pull_result}")
-    else:
-        print("❌ Failed to pull code on server.")
-        sys.exit(1)
-
-    # 2. Rebuild and Restart Containers
-    print("   nm 🔄 Rebuilding and Restarting Docker containers...")
-    restart_result = rebuild_and_restart()
-    if restart_result is not None:
-        print("✅ Server restarted successfully.")
-        if restart_result:
-             print(restart_result)
-    else:
-        print("❌ Failed to restart server.")
-        sys.exit(1)
-
-def health_check():
-    """Verifies the deployment."""
-    try:
-        from execution.tools.remote_ops import run_remote_command
-    except ImportError:
-        sys.path.append(os.path.abspath(os.getcwd()))
-        from execution.tools.remote_ops import run_remote_command
-
-    print("\n🏥 Performing Health Check...")
-    print("   ⏳ Waiting 15 seconds for service startup...")
-    time.sleep(15)
-    
-    status_output = run_remote_command("docker ps -a --format 'table {{.Names}}\t{{.Status}}'")
-    print(status_output)
-
-    if "Up" in str(status_output):
-        print("✅ Deployment verified: Services are UP.")
-    else:
-        print("⚠️  Warning: Services might not be running correctly. Check logs.")
 
 if __name__ == "__main__":
-    print("=== Forex Agent Auto-Deploy (Semi-Automated) ===")
+    print("=== Forex Agent Deploy (Push-Only) ===")
     check_git_status()
     git_push()
-    deploy_remote()
-    health_check()
-    print("\n🎉 Deployment Complete!")
+    show_server_instructions()
+    print("\n✅ Push Complete! Now manually pull on the server.")

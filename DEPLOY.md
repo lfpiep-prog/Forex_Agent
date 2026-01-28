@@ -1,34 +1,58 @@
 # Deployment Workflow
 
-This project uses a **semi-automated** deployment workflow. You initiate the deployment manually from your local machine, and the script handles the rest (Git Push -> Server Pull -> Server Rebuild).
+This project uses a **semi-automated** deployment workflow:
+- **Push to GitHub**: Automated from local machine
+- **Pull on Server**: Manual (you SSH and run the update script)
 
 ## How to Deploy
 
-To deploy your latest changes to the production server:
+### Step 1: Commit Your Changes
+```bash
+git add .
+git commit -m "feat: your changes"
+```
 
-1.  **Commit your changes** locally.
-2.  Run the deployment script from the project root:
+### Step 2: Push to GitHub
+Run the deployment script from the project root:
+```bash
+python deploy.py
+```
 
-    ```bash
-    python deploy.py
-    ```
+This will:
+- Check for uncommitted changes
+- Push to `origin/main`
+- Display manual server instructions
 
-3.  **Follow the prompts**:
-    - The script will warn you if there are uncommitted changes.
-    - It automates the `git push`.
-    - It connects to the server via SSH (alias `forex`).
-    - It pulls the changes on the server.
-    - It performs a **full rebuild** (`docker compose up -d --build`) to ensure code changes are applied.
-    - It runs a brief health check.
+### Step 3: Update the Server (MANUAL)
+SSH into the server and run the update script:
+
+```bash
+ssh forex
+cd ~/Forex_Agent
+bash execution/scripts/update_server.sh
+```
+
+**OR** run commands individually:
+```bash
+cd ~/Forex_Agent
+git pull origin main
+docker compose down && docker compose up -d --build
+```
+
+### Step 4: Verify Deployment
+```bash
+docker ps
+docker logs forex_agent-agent-1 --tail 50
+```
 
 ## Prerequisites
 
-- SSH alias `forex` configured in `~/.ssh/config`.
-- SSH Key authorized on the server.
-- Python dependencies installed locally.
+- SSH alias `forex` configured in `~/.ssh/config`
+- SSH Key authorized on the server
+- Python dependencies installed locally
 
 ## Troubleshooting
 
 If deployment fails:
-- Run `python execution/tools/troubleshoot_server.py` for a deep health check.
-- Run `python execution/tools/remote_ops.py logs` to check container logs.
+- Run `python execution/tools/troubleshoot_server.py` for a deep health check
+- Run `python execution/tools/remote_ops.py logs` to check container logs
