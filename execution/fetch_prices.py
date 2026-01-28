@@ -3,6 +3,9 @@ import os
 import shutil
 import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def fetch_mock(symbol, start_date, end_date, output_dir):
     """
@@ -59,6 +62,30 @@ def main():
                 success = False
         except Exception as e:
             print(f"TwelveData fetch failed: {e}")
+            success = False
+    elif args.provider.upper() == "POLYGON":
+        try:
+            from execution.data_sources.polygon_source import PolygonSource
+            
+            s_date = args.start_date if args.start_date else (datetime.datetime.now() - datetime.timedelta(days=5)).strftime("%Y-%m-%d")
+            e_date = args.end_date if args.end_date else datetime.datetime.now().strftime("%Y-%m-%d")
+            
+            source = PolygonSource()
+            print(f"Fetching Polygon for {args.symbol} from {s_date} to {e_date}...")
+            # Defaulting to hourly for manual fetch, or could be argument
+            df = source.fetch_candles(args.symbol, s_date, e_date, timespan="hour", multiplier=1)
+            
+            if not df.empty:
+                timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                target_file = raw_dir / f"{args.symbol}_POLYGON_{timestamp_str}.csv"
+                df.to_csv(target_file, index=False)
+                print(f"Saved {len(df)} candles to {target_file}")
+                success = True
+            else:
+                print("No data returned from Polygon.")
+                success = False
+        except Exception as e:
+            print(f"Polygon fetch failed: {e}")
             success = False
     else:
         print(f"Error: Provider {args.provider} not implemented yet.")

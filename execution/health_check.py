@@ -66,12 +66,12 @@ def check_broker_status() -> dict:
 def check_data_feed_status() -> dict:
     """Check market data feed status."""
     try:
-        twelvedata_key = os.getenv("TWELVEDATA_API_KEY")
+        polygon_key = os.getenv("POLYGON_API_KEY")
         
-        if not twelvedata_key or twelvedata_key == "your_twelvedata_key_here":
-            return {"status": "UNKNOWN", "message": "TwelveData not configured"}
+        if not polygon_key:
+            return {"status": "UNKNOWN", "message": "Polygon API Key not configured"}
         
-        return {"status": "OK", "message": "TwelveData configured"}
+        return {"status": "OK", "message": "Polygon configured"}
     except Exception as e:
         logger.error(f"Data feed check failed: {e}")
         return {"status": "DEGRADED", "message": str(e)}
