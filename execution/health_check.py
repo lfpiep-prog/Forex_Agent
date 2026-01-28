@@ -27,8 +27,11 @@ logger = logging.getLogger("ForexPlatform")
 def check_database_status() -> dict:
     """Check database connectivity and record count."""
     try:
-        from execution.core.database import engine
+        from execution.core.database import engine, init_db
         from execution.core.models import TradeResult
+        
+        # Ensure tables exist before querying
+        init_db()
         
         with Session(bind=engine) as db:
             count = db.query(TradeResult).count()
@@ -42,9 +45,9 @@ def check_database_status() -> dict:
 def check_broker_status() -> dict:
     """Check broker API connectivity."""
     try:
-        from execution.brokers.ig_broker import create_ig_session
+        # Just check if broker module can be imported and credentials exist
+        from execution.brokers.ig_broker import IGBroker
         
-        # Try to create a session (doesn't actually trade)
         ig_username = os.getenv("IG_USERNAME")
         ig_password = os.getenv("IG_PASSWORD")
         ig_api_key = os.getenv("IG_API_KEY")
@@ -54,9 +57,10 @@ def check_broker_status() -> dict:
             return {"status": "UNKNOWN", "message": "Credentials not configured"}
         
         # We won't actually connect in health check to avoid rate limits
-        # Just verify credentials are present
+        # Just verify credentials are present and module is importable
         return {"status": "OK", "message": f"IG-{acc_type} configured"}
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"Broker module import failed: {e}")
         return {"status": "UNKNOWN", "message": "Broker module not available"}
     except Exception as e:
         logger.error(f"Broker check failed: {e}")
