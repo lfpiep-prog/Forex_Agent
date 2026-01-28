@@ -54,6 +54,9 @@ def load_env_manual():
                         elif value.startswith("'") and value.endswith("'"):
                             value = value[1:-1]
                         
+                        if "#" in value:
+                            value = value.split("#", 1)[0].strip()
+                        
                         if key not in os.environ:
                             os.environ[key] = value
         except Exception as e:
@@ -65,7 +68,7 @@ load_env_manual()
 # CONFIGURATION
 # ============================================================================
 
-MACRO_SERVER_URL = "http://localhost:8000"
+MACRO_SERVER_URL = os.getenv("MACRO_SERVER_URL", "http://localhost:8000")
 REQUIRED_FILES = [
     "trade_journal.csv",
     "trades.db",

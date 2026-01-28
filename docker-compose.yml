@@ -3,6 +3,8 @@ services:
   agent:
     build: .
     restart: always
+    depends_on:
+      - macro-server
     volumes:
       # Persist the trade journal, logs, and database
       - ./trade_journal.csv:/app/trade_journal.csv
@@ -10,6 +12,8 @@ services:
       - ./trades.db:/app/trades.db
     env_file:
       - .env
+    environment:
+      - MACRO_SERVER_URL=http://macro-server:8000
     deploy:
       resources:
         limits:
