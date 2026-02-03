@@ -9,7 +9,7 @@ import os
 import requests
 import logging
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
@@ -68,48 +68,97 @@ class DiscordNotifier:
         }
         self._post(data, channel)
 
-    def send_trade_alert(self, signal: Dict[str, Any], order_intent: Any, result: Any):
-        """Sends a rich formatted embed for a trade execution."""
+    def send_trade_alert(self, signal_or_payload, order_intent=None, result=None):
+        """
+        Sends a rich formatted embed for a trade execution.
+        
+        Accepts either:
+        - TradeNotificationPayload (new preferred method)
+        - signal, order_intent, result (legacy method for backward compatibility)
+        """
         if not self.enabled:
             return
 
-        status_emoji = "✅" if result.status in ["FILLED", "SUBMITTED"] else "❌"
-        color = 5763719 if result.status in ["FILLED", "SUBMITTED"] else 15548997  # Green / Red
+        # Import here to avoid circular imports
+        from execution.notification_models import TradeNotificationPayload
+        
+        # Handle both new payload and legacy arguments
+        if isinstance(signal_or_payload, TradeNotificationPayload):
+            payload = signal_or_payload
+        else:
+            # Legacy mode: build payload from old arguments
+            signal = signal_or_payload
+            
+            def get_val(obj, key, default):
+                if isinstance(obj, dict):
+                    return obj.get(key, default)
+                return getattr(obj, key, default)
+            
+            payload = TradeNotificationPayload(
+                symbol=get_val(signal, 'symbol', 'UNKNOWN'),
+                direction=get_val(signal, 'direction', 'UNKNOWN'),
+                status=result.status if result else 'UNKNOWN',
+                requested_size=order_intent.quantity if order_intent else 0.0,
+                requested_entry=get_val(signal, 'entry_price', None),
+                stop_loss=get_val(signal, 'stop_loss', None),
+                take_profit=get_val(signal, 'take_profit', None),
+                fill_price=getattr(result, 'filled_price', None) if result else None,
+                fill_quantity=getattr(result, 'filled_quantity', None) if result else None,
+                broker_order_id=getattr(result, 'broker_order_id', None) if result else None,
+                rationale=get_val(signal, 'rationale', ''),
+                signal_time=get_val(signal, 'timestamp', None),
+                error_message=getattr(result, 'error_message', None) if result else None
+            )
+        
+        # Validate and log warnings
+        validation_warnings = payload.validate()
+        if validation_warnings:
+            logger.warning(f"TradeNotificationPayload validation warnings: {validation_warnings}")
 
-        # Helper to get value from dict or object
-        def get_val(obj, key, default):
-            if isinstance(obj, dict):
-                return obj.get(key, default)
-            return getattr(obj, key, default)
+        # Determine visual style based on status
+        is_success = payload.status in ["FILLED", "SUBMITTED"]
+        status_emoji = "✅" if is_success else "❌"
+        color = 5763719 if is_success else 15548997  # Green / Red
 
-        direction = get_val(signal, 'direction', 'UNKNOWN')
-        symbol = get_val(signal, 'symbol', 'UNKNOWN')
-        entry = get_val(signal, 'entry_price', 'N/A')
-        sl = get_val(signal, 'stop_loss', 'N/A')
-        tp = get_val(signal, 'take_profit', 'N/A')
-        rationale = get_val(signal, 'rationale', 'No rationale provided')
-
-        # Format timestamp with timezone
-        ts = get_val(signal, 'timestamp', None)
+        # Format timestamp
+        ts = payload.signal_time
         if hasattr(ts, 'isoformat'):
             ts_str = ts.isoformat()
         else:
             ts_str = datetime.now(timezone.utc).isoformat()
 
+        # Build fields based on status
+        fields = [
+            {"name": "⏰ Time", "value": ts_str[:19].replace('T', ' '), "inline": True},
+            {"name": "📊 Status", "value": payload.status, "inline": True},
+            {"name": "📐 Size", "value": payload.get_display_size(), "inline": True},
+        ]
+        
+        # Entry/Fill price - use correct source based on status
+        if payload.status == "FILLED" and payload.fill_price is not None:
+            fields.append({"name": "💵 Fill Price", "value": f"{payload.fill_price}", "inline": True})
+        else:
+            entry_label = "💵 Entry (Req)" if payload.status == "SUBMITTED" else "💵 Entry"
+            fields.append({"name": entry_label, "value": f"{payload.requested_entry or 'N/A'}", "inline": True})
+        
+        # SL/TP
+        fields.append({"name": "🛑 SL", "value": f"{payload.stop_loss or 'N/A'}", "inline": True})
+        fields.append({"name": "🎯 TP", "value": f"{payload.take_profit or 'N/A'}", "inline": True})
+        
+        # Rationale (truncated)
+        if payload.rationale:
+            fields.append({"name": "📝 Rationale", "value": payload.rationale[:500], "inline": False})
+        
+        # Error message for failed orders
+        if payload.error_message and payload.status in ["FAILED", "REJECTED"]:
+            fields.append({"name": "⚠️ Error", "value": payload.error_message[:200], "inline": False})
+
         embed = {
-            "title": f"{status_emoji} {'FILLED' if result.status in ['FILLED', 'SUBMITTED'] else 'REJECTED'}: {direction} {symbol}",
+            "title": f"{status_emoji} {payload.status}: {payload.direction} {payload.symbol}",
             "color": color,
-            "fields": [
-                {"name": "⏰ Time", "value": ts_str[:19].replace('T', ' '), "inline": True},
-                {"name": "📊 Status", "value": result.status, "inline": True},
-                {"name": "📐 Size", "value": f"{order_intent.quantity} lots", "inline": True},
-                {"name": "💵 Entry", "value": f"{entry}", "inline": True},
-                {"name": "🛑 SL", "value": f"{sl}", "inline": True},
-                {"name": "🎯 TP", "value": f"{tp}", "inline": True},
-                {"name": "📝 Rationale", "value": rationale[:500], "inline": False},
-            ],
+            "fields": fields,
             "footer": {
-                "text": f"🆔 {result.broker_order_id if result.broker_order_id else 'N/A'} | Source: IG"
+                "text": f"🆔 {payload.broker_order_id or 'Pending'} | Source: IG"
             },
             "timestamp": ts_str if hasattr(ts, 'isoformat') else None
         }

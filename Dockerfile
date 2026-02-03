@@ -1,29 +1,56 @@
-FROM python:3.11-slim
+# Forex Agent - Production Dockerfile
+# ===================================
+FROM python:3.11.8-slim
 
-# Keep Python from generating .pyc files in the container
+# Build metadata for tracking
+ARG BUILD_DATE
+ARG GIT_COMMIT
+LABEL org.opencontainers.image.title="Forex Agent"
+LABEL org.opencontainers.image.description="Automated Forex Trading Bot"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+
+# Python configuration
 ENV PYTHONDONTWRITEBYTECODE=1
-# Turn off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
+
+# Runtime configuration (can be overridden)
+ENV SMOKE_MODE=false
 
 WORKDIR /app
 
-# Install system dependencies if needed (e.g. for ta-lib or build tools)
-RUN apt-get update && apt-get install -y gcc build-essential python3-dev libffi-dev libssl-dev && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (gcc for some Python packages)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    build-essential \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install Python dependencies first (better layer caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create a non-root user
-RUN useradd -m appuser
+# Create non-root user with specific UID/GID
+RUN useradd -m -u 1001 appuser
 
 # Copy application code
-COPY . .
+COPY --chown=appuser:appuser . .
 
-# Ensure trade_journal.csv exists and has correct permissions
-RUN touch /app/trade_journal.csv && chown appuser:appuser /app/trade_journal.csv && chown -R appuser:appuser /app
+# Ensure data directories exist with correct permissions
+RUN mkdir -p /app/logs && \
+    touch /app/trade_journal.csv && \
+    chown -R appuser:appuser /app
 
+# Switch to non-root user
 USER appuser
 
-# Entrypoint
+# Health check - verifies Python can import main modules
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "from execution.config import config; print('healthy')" || exit 1
+
+# Default entrypoint
 CMD ["python", "execution/main_loop.py"]

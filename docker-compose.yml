@@ -1,13 +1,22 @@
+# Forex Agent - Docker Compose Configuration
+# ==========================================
+
 services:
   # The Trading Agent (Executes trades)
   agent:
-    build: .
-    restart: always
+    container_name: forex-agent
+    build:
+      context: .
+      args:
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    restart: unless-stopped
     read_only: true
     security_opt:
       - no-new-privileges:true
     depends_on:
-      - macro-server
+      macro-server:
+        condition: service_healthy
     volumes:
       # Persist the trade journal, logs, and database
       - ./trade_journal.csv:/app/trade_journal.csv
@@ -19,24 +28,46 @@ services:
       - .env
     environment:
       - MACRO_SERVER_URL=http://macro-server:8000
+    healthcheck:
+      test: [ "CMD", "python", "-c", "from execution.config import config; print('healthy')" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
           memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # The Macro Data Server (Provides API/Data)
   macro-server:
+    container_name: forex-macro-server
     build: ./execution/macro_server
-    restart: always
+    restart: unless-stopped
     read_only: true
     security_opt:
       - no-new-privileges:true
     ports:
-      - "127.0.0.1:8000:8000" # Localhost only - not exposed externally
+      - "127.0.0.1:8000:8000" # Localhost only
     env_file:
       - .env
     volumes:
-      # Persist the macro data database
       - ./macro_data.db:/app/macro_data.db
     tmpfs:
       - /tmp
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

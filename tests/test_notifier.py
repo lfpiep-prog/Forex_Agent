@@ -86,7 +86,10 @@ class TestTradeAlerts:
         
         result = MagicMock()
         result.status = "FILLED"
-        result.order_id = "ORDER-123"
+        result.broker_order_id = "ORDER-123"
+        result.filled_price = 1.0505  # Fill price different from signal entry
+        result.filled_quantity = 1000
+        result.error_message = None
         
         notifier.send_trade_alert(signal, order_intent, result)
         
@@ -104,13 +107,88 @@ class TestTradeAlerts:
             'timestamp': MagicMock(isoformat=MagicMock(return_value="2026-01-26T12:00:00"))
         }
         order_intent = MagicMock(quantity=500)
-        result = MagicMock(status="REJECTED", order_id="ORDER-456")
+        result = MagicMock()
+        result.status = "REJECTED"
+        result.broker_order_id = "ORDER-456"
+        result.filled_price = None
+        result.filled_quantity = 0
+        result.error_message = "Insufficient margin"
         
         notifier.send_trade_alert(signal, order_intent, result)
         
         embed = mock_requests_post.call_args[1]['json']['embeds'][0]
         assert "REJECTED" in embed['title']
         assert embed['color'] == 15548997  # Red
+
+    def test_filled_uses_fill_price(self, notifier, mock_requests_post):
+        """FILLED status should display fill_price, not signal entry_price."""
+        signal = {
+            'direction': 'LONG',
+            'symbol': 'EURUSD',
+            'entry_price': 1.0500,  # Signal requested this price
+            'timestamp': MagicMock(isoformat=MagicMock(return_value="2026-01-26T12:00:00"))
+        }
+        order_intent = MagicMock(quantity=0.5)
+        result = MagicMock()
+        result.status = "FILLED"
+        result.broker_order_id = "FILL-001"
+        result.filled_price = 1.0510  # Actual fill was at different price
+        result.filled_quantity = 0.5
+        result.error_message = None
+        
+        notifier.send_trade_alert(signal, order_intent, result)
+        
+        embed = mock_requests_post.call_args[1]['json']['embeds'][0]
+        fields = {f['name']: f['value'] for f in embed['fields']}
+        
+        # Should show fill price, not signal entry
+        assert '💵 Fill Price' in fields
+        assert '1.051' in fields['💵 Fill Price']
+
+    def test_submitted_uses_requested_entry(self, notifier, mock_requests_post):
+        """SUBMITTED status should display requested entry_price."""
+        signal = {
+            'direction': 'SHORT',
+            'symbol': 'GBPUSD',
+            'entry_price': 1.2600,
+            'timestamp': MagicMock(isoformat=MagicMock(return_value="2026-01-26T12:00:00"))
+        }
+        order_intent = MagicMock(quantity=0.3)
+        result = MagicMock()
+        result.status = "SUBMITTED"
+        result.broker_order_id = "SUB-002"
+        result.filled_price = None  # Not filled yet
+        result.filled_quantity = 0
+        result.error_message = None
+        
+        notifier.send_trade_alert(signal, order_intent, result)
+        
+        embed = mock_requests_post.call_args[1]['json']['embeds'][0]
+        fields = {f['name']: f['value'] for f in embed['fields']}
+        
+        # Should show requested entry with label indicating it's requested
+        assert '💵 Entry (Req)' in fields
+        assert '1.26' in fields['💵 Entry (Req)']
+        # Title should say SUBMITTED, not FILLED
+        assert 'SUBMITTED' in embed['title']
+
+    def test_status_displayed_correctly(self, notifier, mock_requests_post):
+        """Title should show actual status, not hardcoded FILLED."""
+        signal = {'direction': 'LONG', 'symbol': 'USDJPY'}
+        order_intent = MagicMock(quantity=1.0)
+        result = MagicMock()
+        result.status = "SUBMITTED"
+        result.broker_order_id = "TEST-ID"
+        result.filled_price = None
+        result.filled_quantity = 0
+        result.error_message = None
+        
+        notifier.send_trade_alert(signal, order_intent, result)
+        
+        embed = mock_requests_post.call_args[1]['json']['embeds'][0]
+        assert 'SUBMITTED' in embed['title']
+        assert 'FILLED' not in embed['title']  # Should NOT say FILLED
+
 
     def test_send_close_alert_profit(self, notifier, mock_requests_post):
         trade = {

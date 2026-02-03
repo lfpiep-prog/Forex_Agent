@@ -71,7 +71,10 @@ def test_trade_alert(notifier: DiscordNotifier):
     
     result = MagicMock()
     result.status = "FILLED"
-    result.order_id = "TEST-ORDER-001"
+    result.broker_order_id = "TEST-ORDER-001"
+    result.filled_price = 1.0852  # Simulated fill price (different from signal entry)
+    result.filled_quantity = 0.10
+    result.error_message = None
     
     notifier.send_trade_alert(signal, order_intent, result)
     print("   ✅ Trade alert sent to #trade-alerts")
